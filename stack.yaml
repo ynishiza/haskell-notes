@@ -1,0 +1,7 @@
+resolver: nightly-2022-11-05
+compiler: ghc-9.2.5
+
+packages:
+- .
+
+extra-deps: []

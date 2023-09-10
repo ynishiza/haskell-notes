@@ -1,0 +1,8 @@
+cradle:
+  stack:
+    - path: "./lib/"
+      component: haskell-notes:lib
+    - path: "./src/"
+      component: haskell-notes:exe:app
+    - path: "./test/"
+      component: haskell-notes:test:app-test

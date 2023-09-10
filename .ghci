@@ -1,0 +1,16 @@
+-- 
+:set 
+:set -w          
+:set -W           
+:set -XMagicHash
+:set -XNoStarIsType
+:set -fprint-explicit-foralls
+:set prompt "ghci> "
+:set editor "nvim"
+:set +m             
+:set +s            
+:set +t
+
+import Data.Time
+import Language.Haskell.TH
+import System.Environment

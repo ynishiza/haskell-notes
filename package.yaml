@@ -1,0 +1,167 @@
+name:                haskell-notes
+version:             0.1.0.0
+github:              "githubuser/haskell-notes"
+license:             BSD3
+author:              "Author name here"
+maintainer:          "example@example.com"
+copyright:           "2022 Author name here"
+
+extra-source-files:
+- README.md
+- CHANGELOG.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/haskell-notes#readme>
+
+dependencies:
+- aeson >= 2 && <3
+- async >= 2.2 && < 3
+- attoparsec > 0.10 && < 0.20
+- base >= 4.14 && < 5
+- bytestring >=0.10 && <0.12
+- containers >= 0.6 && < 0.7
+- deepseq >= 1.4 && < 1.5
+- directory >= 1.3 && < 1.4
+- exceptions >= 0.10 && < 0.11
+- extra >=1.5 && <1.8
+# - fourmolu >= 0.8 && < 1
+- filepath >= 1.4.1 && < 1.5
+- ghc-prim >= 0.6.0
+- hlint >= 3.4 && < 4
+- lens > 5 && < 6
+- lens-aeson > 1 && < 2
+- mtl >= 2.0 && < 2.3
+- monad-control >= 1 && < 2
+- monad-logger >= 0.3.37 && < 0.4
+- optparse-applicative >= 0.17 && < 0.20
+- regex-tdfa >= 1 && < 2.0
+- resourcet > 1.2.0 && < 1.3.0
+- safe-exceptions > 0.1.6 && < 0.2
+- template-haskell >=2.18 && <3
+- transformers >= 0.5 && < 0.6
+- transformers-base >= 0.4 && < 1
+- time >=1.8 && <2
+- text >=1.2 && <3
+- text-show >=3.0 && <4
+- unix-compat >= 0.5 && < 1
+- vector >= 0.1 && < 1
+#
+# Dependent types
+- dec > 0.0.4 && < 1
+- fin > 0.2 && < 0.3
+- free > 5.1 && < 6
+- singletons > 3 && < 4
+- singletons-base >= 3 && < 4
+- singletons-th > 3 && < 4
+#
+# Web
+- blaze-html > 0.9 && < 1
+- http-media > 0.6 && < 0.10
+- http-types > 0.10.0 && < 0.20.0
+- servant-blaze > 0.9 && < 0.12
+- servant-client > 0.18 && < 0.30
+- servant-server > 0.19 && < 0.30
+- wai > 3.0 && < 4
+- wai-extra > 3.1 && < 4
+- warp > 3.3 && < 4
+
+# Test
+- tasty-hspec >= 1.1 && < 1.3
+- tasty-hedgehog >= 0.1 && <= 1.4
+- hspec >= 0.1 && <= 3
+- hedgehog >= 0.5 && < 1.2
+- random
+- criterion >= 1.5.12 && < 2
+- timeit >= 2.0 && < 3
+
+ghc-options:
+- -rtsopts=all
+- -fprof-auto
+- -fprof-auto-top
+- -fprof-auto-calls
+- -fprof-auto-exported
+- -fprof-auto-calls
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+- -threaded 
+- -Werror           # Warning as error
+
+
+# NOTE: "language" field not recognized?
+# default-language: Haskell2010
+# language: Haskell2010
+
+default-extensions:
+- Haskell2010
+- DeriveFoldable
+- DeriveFunctor
+- DeriveTraversable
+- DeriveGeneric
+- DeriveDataTypeable
+- ExplicitForAll
+- ScopedTypeVariables
+- StandaloneDeriving
+- TypeApplications
+- MultiParamTypeClasses
+- TypeSynonymInstances
+- RecordWildCards
+- ImportQualifiedPost
+# - ConstraintKinds
+# - DataKinds
+# - DeriveAnyClass
+# - DeriveFoldable
+# - DeriveFunctor
+# - DeriveGeneric
+# - DeriveTraversable
+# - DeriveDataTypeable
+# - DerivingStrategies
+# - DerivingVia
+# - ExplicitForAll
+# - FlexibleContexts
+# - FlexibleInstances
+# - FunctionalDependencies
+# - GADTs
+# - GeneralizedNewtypeDeriving
+# - ImportQualifiedPost
+# - InstanceSigs
+# - LambdaCase
+# - MultiParamTypeClasses
+# - OverloadedStrings
+# - RankNTypes
+# - RecordWildCards
+# - ScopedTypeVariables
+# - StandaloneDeriving
+# - StandaloneKindSignatures
+# - StrictData
+# - TemplateHaskell
+# - TupleSections
+# - TypeApplications
+# - TypeOperators
+# - TypeFamilyDependencies
+# - TypeSynonymInstances
+
+
+library:
+  source-dirs: ./lib
+
+executables:
+  app:
+    main:               Main.hs
+    source-dirs:        ./src
+    dependencies: 
+      - haskell-notes
+      - megaparsec >= 9 && < 10
+

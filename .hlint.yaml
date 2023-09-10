@@ -1,0 +1,9 @@
+# HLint configuration file
+# https://github.com/ndmitchell/hlint
+
+# Use <$> instead of fmap
+- ignore: { name: "Use fmap" }
+- ignore: {name: "Avoid lambda using `infix`"} 
+# Clearer to use case
+- ignore: {name: "Replace case with fromMaybe"} 
+- ignore: {name: "Replace case with maybe"} 
