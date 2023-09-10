@@ -19,11 +19,11 @@ runAction :: TSem -> IO () -> IO ()
 runAction sem action =
   void $
     forkIO $
-      atomically (waitTSem sem) >> action           -- wait for lock
+      atomically (waitTSem sem) >> action -- wait for lock
 
 -- signal free lock
 signalFree :: TSem -> IO ()
-signalFree sem = atomically $ signalTSem sem        --
+signalFree sem = atomically $ signalTSem sem --
 
 test :: IO ()
 test = do
@@ -41,7 +41,7 @@ test = do
   runAction sem $ afterDelay waitTime $ putStrLn "f" >> signalFree sem >> signalFree sem >> signalFree sem
 
   -- parallel
-  runAction sem $ afterDelay waitTime $ putStrLn "g" 
+  runAction sem $ afterDelay waitTime $ putStrLn "g"
   runAction sem $ afterDelay waitTime $ putStrLn "h"
   runAction sem $ afterDelay waitTime $ putStrLn "i"
 
@@ -55,3 +55,5 @@ testSequential = do
   runAction sem $ afterDelay waitTime $ putStrLn "b" >> signalFree sem
   runAction sem $ afterDelay waitTime $ putStrLn "c" >> signalFree sem
   pure ()
+
+main = test

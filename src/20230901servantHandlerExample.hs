@@ -50,3 +50,6 @@ mainServer = hoistServer myAPI f myAPIServer
     f :: MyHandler a -> Handler a -- converter
     f (MyHandler h) = runStdoutLoggingT h
       & flip evalStateT ""
+
+main :: IO ()
+main = pure ()

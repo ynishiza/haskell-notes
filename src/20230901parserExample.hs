@@ -20,3 +20,6 @@ wordsParser =
         <* ((whitespace >> endOfInput) <|> endOfInput)
   )
     <?> "words"
+
+main :: IO ()
+main = pure ()

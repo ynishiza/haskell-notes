@@ -21,7 +21,7 @@ import Control.Monad.IO.Class
 import Data.Aeson
 import GHC.Generics
 import Servant
-import Control.Monad.Catch (throwM)
+-- import Control.Monad.Catch (throwM)
 
 -- Data
 data User where

@@ -73,3 +73,5 @@ test = do
   putStrLn $ "B name:" <> show (datatypeName $ from B)
   putStrLn $ "A constructor:" <> show (getConstructorName $ from A)
   putStrLn $ "B constructor:" <> show (getConstructorName $ from B)
+
+main = test

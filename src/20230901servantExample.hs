@@ -43,3 +43,5 @@ handleError h = do
     Left (e :: SomeException) -> throwError $ err400 { errBody = BS.pack ("Uncaught error: " <> show e)  }
     Right x -> return x
 
+
+main = start

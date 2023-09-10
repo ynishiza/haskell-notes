@@ -73,3 +73,6 @@ mainServer :: Server MyAPI
 mainServer = hoistServer myAPI f server
   where
     f x = runStdoutLoggingT $ evalStateT x (MyState "" 0)
+
+main :: IO ()
+main = pure ()

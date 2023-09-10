@@ -125,3 +125,5 @@ test = do
   putStrLn $ "delimit:\t" <> C.evalCont compWithLoop_
   putStrLn $ "delimit:\t" <> C.evalCont comp3'
   pure ()
+
+main = test
