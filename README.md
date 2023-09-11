@@ -1,7 +1,2 @@
-# Project template
+# Haskell notes
 
-Run
-
-```
-./create.sh <PROJECT_PATH>
-```

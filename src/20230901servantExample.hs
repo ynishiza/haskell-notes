@@ -1,3 +1,4 @@
+#!/usr/bin/env stack
 -- Run with
 --
 --    stack ghci -- src/scratch/ServantAPI.hs src/scratch/servantExample.hs
