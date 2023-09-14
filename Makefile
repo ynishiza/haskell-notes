@@ -6,7 +6,7 @@ PROJECTNAME=haskell-notes
 DOCUMENTATION_DIR=docs
 
 SRCFILES=$(wildcard src/20*.hs)
-SRCFILESCOUNT=21
+SRCFILESCOUNT=22
 
 default: help
 

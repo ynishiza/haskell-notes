@@ -4,6 +4,8 @@
 :set -W           
 :set -XMagicHash
 :set -XNoStarIsType
+:set -XHaskellTemplate
+:set -XDataKinds
 :set -fprint-explicit-foralls
 :set prompt "ghci> "
 :set editor "nvim"

@@ -4,8 +4,10 @@
     stack exec -- src/scratch/<name>.hs
     stack ghci -- src/scratch/<name>.hs
 -}
+{-# HLINT ignore "Use =<<" #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
@@ -14,12 +16,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-
-{-# HLINT ignore "Use =<<" #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 import Data.Foldable
 import Data.Kind (Type)
-import Data.Maybe
 import Data.Singletons.TH
 import GHC.Natural
 
