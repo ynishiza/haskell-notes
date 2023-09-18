@@ -19,4 +19,7 @@ jobs:
         run: make clean
 
       - name: Compile
-        run: make compile
+        run: make debug && make compile
+
+      - name: Test
+        run: make debug && make test

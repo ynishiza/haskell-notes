@@ -45,4 +45,4 @@ handleError h = do
     Right x -> return x
 
 
-main = start
+main = putStrLn "Hello"

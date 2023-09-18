@@ -74,5 +74,5 @@ main = do
   -- handleError fn0
   -- handleError fn4
   -- handleError fn4'
-  handleError (evaluate g4)
-  -- handleError2 fn4
+  -- handleError (evaluate g4)
+  handleError2 fn4

@@ -1,3 +1,4 @@
+#!/usr/bin/env stack
 {-
   Run with
     stack exec -- src/scratch/<name>.hs

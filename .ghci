@@ -7,6 +7,7 @@
 :set -XHaskellTemplate
 :set -XDataKinds
 :set -fprint-explicit-foralls
+-- :set -Werror=incomplete-patterns
 :set prompt "ghci> "
 :set editor "nvim"
 :set +m             

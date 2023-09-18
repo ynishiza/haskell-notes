@@ -1,10 +1,10 @@
 #!/usr/bin/env stack
-{-# LANGUAGE AllowAmbiguousTypes #-}
 {-
   Run with
     stack exec -- src/scratch/<name>.hs
     stack ghci -- src/scratch/<name>.hs
 -}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -19,21 +19,18 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
-
--- import Data.Type.Equality ((:~:))
-
--- import GHC.TypeLits (Symbol)
+{-# OPTIONS_GHC -Werror=incomplete-patterns #-}
 
 import Control.Monad
 import Data.Foldable
 import Data.Function ((&))
-import Data.Kind (Type)
-import Data.Type.Equality hiding (type (==))
 import Data.Singletons.Decide
 import Data.Singletons.TH
+import Data.Type.Equality hiding (type (==))
 import GHC.Natural
 import Test.Hspec
 import Prelude hiding (pred, succ)
+import Data.Kind (Type)
 
 data Nat = Z | S Nat deriving (Eq, Show)
 
@@ -65,28 +62,6 @@ allNats = iterate (\(SomeNat n) -> SomeNat (SS n)) (SomeNat SZ)
 someNat :: Natural -> SomeNat
 someNat n = allNats !! fromIntegral n
 
-type (+) :: Nat -> Nat -> Nat
-type family (+) n m where
-  'Z + n = n -- (SA)
-  ('S n) + m = 'S (n + m) -- (SB)
-
-type (-) :: Nat -> Nat -> Nat
-type family (-) n m where
-  n - 'Z = n
-  ('S n) - ('S m) = n - m
-
-type (==) :: Nat -> Nat -> Bool
-type family (==) n m where
-  'Z == 'Z = 'True
-  'Z == ('S n) = 'False
-  ('S n) == ('S m) = n == m
-
-type (<=) :: Nat -> Nat -> Bool
-type family (<=) n m where
-  'Z <= 'Z = 'True
-  'Z <= ('S n) = 'True
-  ('S n) <= ('S m) = n <= m
-
 toNatural :: SNat n -> Natural
 toNatural SZ = 0
 toNatural (SS x) = 1 + toNatural x
@@ -111,6 +86,18 @@ isEqual (SS n) (SS m) = case isEqual n m of
   Disproved f -> Disproved $ \Refl -> f Refl
 isEqual SZ (SS _) = Disproved $ \case {}
 isEqual (SS _) SZ = Disproved $ \case {}
+
+-- ============================== Arithmetic ==============================
+
+type (+) :: Nat -> Nat -> Nat
+type family (+) n m where
+  'Z + n = n -- (SA)
+  ('S n) + m = 'S (n + m) -- (SB)
+
+type (-) :: Nat -> Nat -> Nat
+type family (-) n m where
+  n - 'Z = n
+  ('S n) - ('S m) = n - m
 
 sumFlipZ :: forall n. SNat n -> n + 'Z :~: n
 -- 0 + 0      =     0                     by (SA)
@@ -192,95 +179,6 @@ add2 x y = gcastWith (isAddCommutative x y) $ repeatN (const SS) x y y
 add3 :: SNat n -> SNat m -> SNat o -> SNat (n + m + o)
 add3 n m o = gcastWith (isAddAssociative n m o) $ add2 n (add2 m o)
 
--- ============================== IsLE ==============================
-
-zeroLEZero :: IsLE Nat0 Nat0
-zeroLEZero = IsLEZ @'Z
-
-zeroLEOne :: IsLE Nat0 Nat1
-zeroLEOne = IsLEZ
-
-zeroLETwo :: IsLE Nat0 Nat2
-zeroLETwo = IsLEZ
-
-zeroLEThree :: IsLE Nat0 Nat3
-zeroLEThree = IsLEZ
-
-oneLEOne :: IsLE Nat1 Nat1
-oneLEOne = IsLES zeroLEZero
-
-oneLETwo :: IsLE Nat1 Nat2
-oneLETwo = IsLES zeroLEOne
-
-oneLEThree :: IsLE Nat1 Nat3
-oneLEThree = IsLES zeroLETwo
-
-twoLETwo :: IsLE Nat2 Nat2
-twoLETwo = IsLES oneLEOne
-
-twoLEThree :: IsLE Nat2 Nat3
-twoLEThree = IsLES oneLETwo
-
-data SomeIsLE where
-  SomeIsLE :: forall m n. (SingI m, SingI n) => (IsLE m n) -> SomeIsLE
-
-type IsLE :: Nat -> Nat -> Type
-data IsLE m n where
-  IsLEZ :: IsLE 'Z n -- witness: 0 <= x for any x
-  IsLES :: IsLE m n -> IsLE ('S m) ('S n) -- witness: x <= y implies x+1 <= y+1
-
-instance Eq (IsLE x y) where _ == _ = True
-instance (SingI x, SingI y) => Show (IsLE x y) where show = showIsLE
-
-showIsLE :: forall m n. (SingI m, SingI n) => IsLE m n -> String
-showIsLE _ = "IsLE: " <> showSNat (sing @m) <> " <= " <> showSNat (sing @n)
-
-showSomeIsLE :: SomeIsLE -> String
-showSomeIsLE (SomeIsLE x) = showIsLE x
-
-isLE :: SNat m -> SNat n -> Decision (IsLE m n)
-isLE SZ _ = Proved IsLEZ
-isLE (SS m) (SS n) = case isLE m n of
-                       Proved x -> Proved $ IsLES x
-                       Disproved f -> Disproved $ \case
-                          IsLES x -> f x
-isLE _ _ = Disproved $ \case
-
-isLEToNat :: forall m n. (SingI m, SingI n) => IsLE m n -> (SNat m, SNat n)
-isLEToNat _ = (sing @m, sing @n)
-
-isLEZ :: IsLE 'Z n
-isLEZ = IsLEZ
-
-isLERefl :: forall n. SingI n => IsLE n n
-isLERefl = case sing @n of
-  SZ -> IsLEZ
-  SS x -> withSingI x isLERefl
-
-isLESucc :: IsLE m n -> IsLE ('S m) ('S n)
-isLESucc = IsLES
-
-isLEPrev :: IsLE ('S m) ('S n) -> IsLE m n
-isLEPrev (IsLES x) = x
-
-isLEStep :: IsLE m n -> IsLE m ('S n)
-isLEStep IsLEZ = IsLEZ
-isLEStep (IsLES x) = IsLES $ isLEStep x
-
-isLEStepL :: IsLE ('S m) n -> IsLE m n
-isLEStepL x = let IsLES y = isLEStep x in y
-
-isLEAsym :: IsLE m n -> IsLE n m -> n :~: m
-isLEAsym IsLEZ IsLEZ = Refl
-isLEAsym (IsLES x) (IsLES y) = gcastWith (isLEAsym x y) Refl
-
-isLETrans :: IsLE m n -> IsLE n o -> IsLE m o
-isLETrans IsLEZ _ = IsLEZ
-isLETrans (IsLES x) (IsLES y) = isLESucc $ isLETrans x y
-
-isLEZero :: IsLE n 'Z -> n :~: 'Z
-isLEZero IsLEZ = Refl
-
 -- ============================== Test ==============================
 
 type Nat0 = 'Z
@@ -294,6 +192,7 @@ type Nat3 = 'S Nat2
 type Nat4 = 'S Nat3
 
 type Nat5 = 'S Nat4
+
 type Nat10 = Nat5 + Nat5
 
 snat0 :: SNat Nat0
@@ -327,12 +226,6 @@ main = do
     [ SomeNat snat0,
       SomeNat snat1,
       SomeNat snat2
-    ]
-
-  traverse_
-    (putStrLn . showSomeIsLE)
-    [ SomeIsLE zeroLEZero,
-      SomeIsLE zeroLEOne
     ]
 
   print $ showSNat snat10
@@ -474,41 +367,16 @@ spec = describe "Nat" $ do
           (SomeNat <$> (snat2 %- snat3), Nothing)
         ]
 
-  describe "IsLE" $ do
-    it "[isLE]" $ do
-      let test (SomeNat m) (SomeNat n) = expectProof (isLE m n) (toNatural m <= toNatural n) $ show m <> "<=" <> show n
-      x <- traverse (uncurry test) $ (,) <$> take 20 allNats <*> take 20 allNats
-      length x `shouldBe` 400
+data List a = Empty | Succ a (List a) Int
 
-    it "[isLEPrev]" $ do
-      isLEPrev oneLEOne `shouldBe` zeroLEZero
-      isLEPrev oneLETwo `shouldBe` zeroLEOne
-      isLEPrev twoLETwo `shouldBe` oneLEOne
-      isLEPrev twoLEThree `shouldBe` oneLETwo
+pattern MyEmptyList :: List a
+pattern MyEmptyList = Empty
 
-    it "[isLEStep]" $ do
-      isLEStep zeroLEZero `shouldBe` zeroLEOne
-      isLEStep zeroLEOne `shouldBe` zeroLETwo
-      isLEStep oneLEOne `shouldBe` oneLETwo
-      isLEStep oneLETwo `shouldBe` oneLEThree
-      isLEStep twoLETwo `shouldBe` twoLEThree
-
-    it "[isLEStepL]" $ do
-      isLEStepL oneLEOne `shouldBe` zeroLEOne
-      isLEStepL oneLETwo `shouldBe` zeroLETwo
-      isLEStepL twoLETwo `shouldBe` oneLETwo
-      isLEStepL twoLEThree `shouldBe` oneLEThree
-
-    it "[isLETrans]" $ do
-      isLETrans zeroLEZero zeroLEZero `shouldBe` zeroLEZero
-      isLETrans zeroLEZero zeroLEOne `shouldBe` zeroLEOne
-      isLETrans zeroLEZero zeroLETwo `shouldBe` zeroLETwo
-      isLETrans zeroLEOne oneLEOne `shouldBe` zeroLEOne
-      isLETrans zeroLEOne oneLETwo `shouldBe` zeroLETwo
-      isLETrans zeroLETwo twoLETwo `shouldBe` zeroLETwo
-      isLETrans oneLEOne oneLEOne `shouldBe` oneLEOne
-      isLETrans oneLEOne oneLETwo `shouldBe` oneLETwo
-      isLETrans oneLETwo twoLETwo `shouldBe` oneLETwo
-      isLETrans oneLETwo twoLEThree `shouldBe` oneLEThree
-      isLETrans twoLETwo twoLETwo `shouldBe` twoLETwo
-      isLETrans twoLETwo twoLEThree `shouldBe` twoLEThree
+pattern MySucc :: a -> List a -> List a
+pattern MySucc a l <- Succ a l n
+-- pattern MySucc a l <- Succ a (Succ _ l _) n
+-- pattern MySucc a l <- Succ a (Succ _ l _) n | l' = l
+  where
+    MySucc a l
+      | Succ _ _ n <- l = Succ a l (n + 1)
+      | Empty <- l = Succ a Empty 1

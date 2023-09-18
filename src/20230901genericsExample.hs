@@ -1,3 +1,4 @@
+#!/usr/bin/env stack
 -- run with
 --
 --   $ stack ghci -- src/scratch/genericsExample.hs
