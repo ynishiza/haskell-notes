@@ -6,7 +6,7 @@ PROJECTNAME=haskell-notes
 DOCUMENTATION_DIR=docs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=24
+SRCFILESCOUNT=25
 
 default: help
 
@@ -43,7 +43,7 @@ compile-scripts: ## Compile each script
 test-scripts: ## Test scripts
 	set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
-	for file in "$${FILES[@]}"; do stack exec -- $$file; done
+	for file in "$${FILES[@]}"; do stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
 
 .PHONY: document
 document: ## Build haddock documentation 

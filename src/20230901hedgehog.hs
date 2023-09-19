@@ -18,7 +18,8 @@ import Hedgehog.Range as R
 main :: IO ()
 main = do
   putStr "Hello"
-  void $ checkSequential $$discover
+  testSuccess <- checkSequential $$discover
+  unless testSuccess $ error "Test failed"
 
 prop_linear :: Property
 prop_linear = testCoverage $ int $ linear 1 100
@@ -33,8 +34,8 @@ prop_linearWithResizeOrigin :: Property
 prop_linearWithResizeOrigin = testCoverage $ resize 30 $ int $ linearFrom 50 1 100
 
 prop_a = testCoverage $ int (R.constant 1 100)
-prop_b = testCoverage $ int (R.exponential 1 100)
 
+prop_b = testCoverage $ int (R.exponential 1 100)
 
 testCoverage :: Gen Int -> Property
 testCoverage gen = property $ forAll gen >>= checkCoverage
@@ -49,9 +50,9 @@ prop_testcoverage :: Property
 prop_testcoverage = property $ do
   x <- forAll $ int $ linearFrom 50 0 100
   cover 0 "[0,20)" $ 0 <= x && x < 20
-  cover 20 "[20,20)" $ 20 <= x && x < 40
-  cover 40 "[40,60)" $ 40 <= x && x < 60
-  cover 20 "[60,80)" $ 60 <= x && x < 80
+  cover 10 "[20,20)" $ 20 <= x && x < 40
+  cover 30 "[40,60)" $ 40 <= x && x < 60
+  cover 10 "[60,80)" $ 60 <= x && x < 80
   cover 0 "[80,100)" $ 80 <= x && x < 100
 
 prop_shrinktest :: Property

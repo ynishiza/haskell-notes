@@ -85,16 +85,16 @@ leToNat _ = (sing @m, sing @n)
 leZero :: LEProof 'Z n
 leZero = LEZero
 
-leRefl :: forall n. SingI n => LEProof n n
-leRefl = case sing @n of
-  SZ -> LEZero
-  SS x -> withSingI x leRefl
-
 leSucc :: LEProof m n -> LEProof ('S m) ('S n)
 leSucc = LESucc
 
 lePred :: LEProof ('S m) ('S n) -> LEProof m n
 lePred (LESucc proof) = proof
+
+leRefl :: forall n. SingI n => LEProof n n
+leRefl = case sing @n of
+  SZ -> LEZero
+  SS x -> withSingI x leRefl
 
 leStep :: LEProof m n -> LEProof m ('S n)
 leStep LEZero = LEZero
@@ -111,16 +111,20 @@ leTrans :: LEProof m n -> LEProof n o -> LEProof m o
 leTrans LEZero _ = LEZero
 leTrans (LESucc m_) (LESucc n_) = leSucc $ leTrans m_ n_
 
-proofZeroLEZero :: LEProof n 'Z -> n :~: 'Z
-proofZeroLEZero LEZero = Refl
-
 leSwap :: SNat m -> SNat n -> Neg (LEProof m n) -> LEProof ('S n) m
 leSwap (SS m_) (SS n_) f = LESucc $ leSwap m_ n_ (f . LESucc)
 leSwap SZ _ f = absurd $ f LEZero
 leSwap (SS _) SZ _ = LESucc LEZero
 
-leSwap' :: LEProof n m -> LEProof ('S m) n -> Void
-leSwap' = undefined
+leSwap' :: SNat m -> SNat n -> LEProof m n -> LEProof ('S n) m -> Void
+leSwap' m n p1 p2 = case decideLE' m n of
+  Disproved f -> f p1
+  Proved _ -> case decideLE' (SS n) m of
+    Disproved f -> f p2
+    Proved _ -> undefined
+
+proofZeroLEZero :: LEProof n 'Z -> n :~: 'Z
+proofZeroLEZero LEZero = Refl
 
 type Nat0 = 'Z
 

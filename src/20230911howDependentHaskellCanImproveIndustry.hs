@@ -17,10 +17,11 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE EmptyCase #-}
 
 import Data.Foldable
 import Data.Kind (Type)
-import Data.Singletons.TH
+import Data.Singletons.TH (genSingletons, Sing(..), SingKind(..))
 import GHC.Natural
 
 -- ======================================== PeanoNatural ========================================
@@ -143,3 +144,5 @@ main = do
 
   putStrLn $ banner "+|"
   traverse_ (uncurry testPN) $ (\(n, x) (m, y) -> (n <> " + " <> m, x +| y)) <$> allNumbers <*> allNumbers
+
+

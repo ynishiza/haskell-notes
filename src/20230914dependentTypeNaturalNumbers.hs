@@ -8,6 +8,7 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE EmptyCase #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE ImpredicativeTypes #-}
 {-# LANGUAGE InstanceSigs #-}
@@ -22,26 +23,22 @@
 {-# OPTIONS_GHC -Werror=incomplete-patterns #-}
 
 import Control.Monad
+import Data.Bool.Singletons (SBool (..))
 import Data.Foldable
 import Data.Function ((&))
+import Data.Kind (Type)
 import Data.Singletons.Decide
-import Data.Singletons.TH
+import Data.Singletons
+import Data.Singletons.TH (genSingletons)
 import Data.Type.Equality hiding (type (==))
 import GHC.Natural
+import Prelude.Singletons (type (<>))
 import Test.Hspec
 import Prelude hiding (pred, succ)
-import Data.Kind (Type)
 
 data Nat = Z | S Nat deriving (Eq, Show)
 
 genSingletons [''Nat]
-
-type SomeNat = SomeSing Nat
-
-pattern SomeNat :: SNat (n :: Nat) -> SomeSing Nat
-pattern SomeNat n = SomeSing n
-
-{-# COMPLETE SomeNat #-}
 
 instance Eq (SNat n) where _ == _ = True
 
@@ -56,21 +53,12 @@ instance SDecide Nat where
   (SS _) %~ SZ = Disproved $ \case {}
   SZ %~ (SS _) = Disproved $ \case {}
 
-allNats :: [SomeNat]
-allNats = iterate (\(SomeNat n) -> SomeNat (SS n)) (SomeNat SZ)
-
-someNat :: Natural -> SomeNat
-someNat n = allNats !! fromIntegral n
-
 toNatural :: SNat n -> Natural
 toNatural SZ = 0
 toNatural (SS x) = 1 + toNatural x
 
 showSNat :: SNat n -> String
 showSNat x = "SNat @" <> show (toNatural x)
-
-showSomeSNat :: SomeNat -> String
-showSomeSNat (SomeNat x) = showSNat x
 
 suc :: SNat n -> SNat ('S n)
 suc SZ = SS SZ
@@ -79,13 +67,23 @@ suc n@(SS _) = SS n
 pred :: (n ~ 'S m) => SNat n -> SNat m
 pred (SS n) = n
 
-isEqual :: SNat n -> SNat m -> Decision (n :~: m)
-isEqual SZ SZ = Proved Refl
-isEqual (SS n) (SS m) = case isEqual n m of
-  Proved Refl -> Proved Refl
-  Disproved f -> Disproved $ \Refl -> f Refl
-isEqual SZ (SS _) = Disproved $ \case {}
-isEqual (SS _) SZ = Disproved $ \case {}
+-- ============================== Opaque type ==============================
+
+type SomeNat = SomeSing Nat
+
+pattern SomeNat :: SNat (n :: Nat) -> SomeSing Nat
+pattern SomeNat n = SomeSing n
+
+showSomeSNat :: SomeNat -> String
+showSomeSNat (SomeNat x) = showSNat x
+
+{-# COMPLETE SomeNat #-}
+
+allNats :: [SomeNat]
+allNats = iterate (\(SomeNat n) -> SomeNat (SS n)) (SomeNat SZ)
+
+someNat :: Natural -> SomeNat
+someNat n = allNats !! fromIntegral n
 
 -- ============================== Arithmetic ==============================
 
@@ -119,36 +117,36 @@ sumFlipS SZ _ = Refl
 --                  =     (1 + n) + m                 by (SB)
 sumFlipS (SS n_) m = gcastWith (sumFlipS n_ m) Refl
 
-isAddCommutative' :: forall n m. (SingI n, SingI m) => (n + m :~: m + n)
-isAddCommutative' = isAddCommutative (sing @n) (sing @m)
+sumIsCommutative' :: forall n m. (SingI n, SingI m) => (n + m :~: m + n)
+sumIsCommutative' = sumIsCommutative (sing @n) (sing @m)
 
-isAddCommutative :: forall n m. SNat n -> SNat m -> (n + m :~: m + n)
+sumIsCommutative :: forall n m. SNat n -> SNat m -> (n + m :~: m + n)
 -- 0 + m    =     m                       by (SA)
 --          =     m + 0                   by sumFlipZ
-isAddCommutative SZ m = gcastWith (sumFlipZ m) Refl
+sumIsCommutative SZ m = gcastWith (sumFlipZ m) Refl
 -- n + m    =     (1 + (n - 1)) + m       by pattern match
 --          =     1 + ((n - 1) + m)       by (SB)
 --          =     1 + (m + (n - 1))       by recursion
 --          =     (1 + m) + (n - 1)       by (SB)
 --          =     m + n                   by sumFlipS
-isAddCommutative (SS (n_ :: SNat n_)) m =
-  gcastWith (isAddCommutative n_ m :: n_ + m :~: m + n_) $
+sumIsCommutative (SS (n_ :: SNat n_)) m =
+  gcastWith (sumIsCommutative n_ m :: n_ + m :~: m + n_) $
     gcastWith (sumFlipS m n_ :: m + n :~: 'S (m + n_)) Refl
 
-isAddAssociative' :: forall n m o. (SingI n, SingI m, SingI o) => (n + m) + o :~: n + (m + o)
-isAddAssociative' = isAddAssociative (sing @n) (sing @m) (sing @o)
+sumIsAssociative' :: forall n m o. (SingI n, SingI m, SingI o) => (n + m) + o :~: n + (m + o)
+sumIsAssociative' = sumIsAssociative (sing @n) (sing @m) (sing @o)
 
-isAddAssociative :: forall n m o. SNat n -> SNat m -> SNat o -> ((n + m) + o :~: n + (m + o))
+sumIsAssociative :: forall n m o. SNat n -> SNat m -> SNat o -> ((n + m) + o :~: n + (m + o))
 -- (0 + m) + n      =     m + n                         by (SA)
 --                  =     (m + n)
 --                  =     0 + (m + n)                   by (SA)
-isAddAssociative SZ _ _ = Refl
+sumIsAssociative SZ _ _ = Refl
 -- (n + m) + o      =     ((1 + (n - 1)) + m) + o       by pattern match
 --                  =     (1 + ((n - 1) + m) + o        by (SB)
 --                  =     1 + (((n - 1) + m) + o)       by (SB)
 --                  =     1 + ((n - 1) + (m + o))       by recursion
 --                  =     n + (m + o)                   by (SB)
-isAddAssociative (SS (n_ :: SNat n_)) m o = gcastWith (isAddAssociative n_ m o) Refl
+sumIsAssociative (SS (n_ :: SNat n_)) m o = gcastWith (sumIsAssociative n_ m o) Refl
 
 repeatN :: forall f n m. (forall (a :: Nat). SNat a -> f a -> f ('S a)) -> SNat n -> SNat m -> f (m :: Nat) -> f (m + n)
 -- f m                    =     f (0 + m)                 by (SA)
@@ -157,7 +155,10 @@ repeatN _ SZ m x = gcastWith (sumFlipZ m) x
 -- g (f (m + (n - 1)))    =     f (1 + (m + (n - 1)))     by g
 --                        =     f ((1 + m) + (n - 1))     by (SB)
 --                        =     f (m + n)                 by sumFlipS
-repeatN g (SS n_) m x = repeatN g n_ m x & g (m %+ n_) & gcastWith (sumFlipS m n_)
+repeatN g (SS n_) m x =
+  repeatN g n_ m x
+    & g (m %+ n_)
+    & gcastWith (sumFlipS m n_)
 
 unrepeatN :: (forall (a :: Nat). SNat a -> f ('S a) -> f a) -> SNat n -> SNat m -> f (m :: Nat) -> Maybe (f (m - n))
 unrepeatN _ SZ _ x = Just x
@@ -174,10 +175,67 @@ x %- SZ = Just x
 _ %- _ = Nothing
 
 add2 :: SNat n -> SNat m -> SNat (n + m)
-add2 x y = gcastWith (isAddCommutative x y) $ repeatN (const SS) x y y
+add2 x y =
+  repeatN (const SS) x y y
+    & gcastWith (sumIsCommutative x y)
 
 add3 :: SNat n -> SNat m -> SNat o -> SNat (n + m + o)
-add3 n m o = gcastWith (isAddAssociative n m o) $ add2 n (add2 m o)
+add3 n m o =
+  add2 n (add2 m o)
+    & gcastWith (sumIsAssociative n m o)
+
+-- ============================== Comparison ==============================
+
+type (<=) :: Nat -> Nat -> Bool
+type family (<=) m n where
+  'Z <= n = 'True
+  ('S m) <= ('S n) = m <= n
+  _ <= _ = 'False
+
+data IsLE m n where
+  IsLE :: (m <= n ~ 'True) => SNat m -> SNat n -> IsLE m n
+
+instance Eq (IsLE m n) where _ == _ = True
+
+instance Show (IsLE m n) where show = showLEProof
+
+showLEProof :: forall m n. IsLE m n -> String
+showLEProof (IsLE m n) = "LEProof: " <> showSNat m <> " <= " <> showSNat n
+
+deciseIsLE :: SNat m -> SNat n -> Decision (IsLE m n)
+deciseIsLE SZ n = Proved $ IsLE SZ n
+deciseIsLE (SS m_) (SS n_) = case deciseIsLE m_ n_ of
+  Proved (IsLE _ _) -> Proved $ IsLE (SS m_) (SS n_)
+  Disproved f -> Disproved $ \(IsLE _ _) -> f (IsLE m_ n_)
+deciseIsLE (SS _) SZ = Disproved $ \case {}
+
+withIsLE :: IsLE m n -> ((m <= n ~ 'True) => r) -> r
+withIsLE (IsLE _ _) f = f
+
+isLEZero :: SNat n -> IsLE 'Z n
+isLEZero n = IsLE SZ n
+
+isLESucc :: IsLE m n -> IsLE ('S m) ('S n)
+isLESucc (IsLE m n) = IsLE (SS m) (SS n)
+
+isLEPred :: IsLE ('S m) ('S n) -> IsLE m n
+isLEPred (IsLE (SS m_) (SS n_)) = IsLE m_ n_
+
+isLEStep :: IsLE m n -> IsLE m ('S n)
+isLEStep (IsLE SZ n) = IsLE SZ (SS n)
+isLEStep (IsLE m@(SS m_) n@(SS n_)) = withIsLE (isLEStep (IsLE m_ n_)) $ IsLE m (SS n)
+
+isLEStepL :: IsLE ('S m) n -> IsLE m n
+isLEStepL (IsLE (SS SZ) n) = IsLE SZ n
+isLEStepL (IsLE (SS (SS m_)) (SS n_)) = isLESucc (isLEStepL (IsLE (SS m_) n_))
+
+isLETrans :: IsLE m n -> IsLE n o -> IsLE m o
+isLETrans (IsLE SZ _) (IsLE _ o) = IsLE SZ o
+isLETrans (IsLE (SS m_) (SS n_)) (IsLE _ (SS o_)) = isLESucc $ isLETrans (IsLE m_ n_) (IsLE n_ o_)
+
+isLEAsym :: IsLE m n -> IsLE n m -> m :~: n
+isLEAsym (IsLE SZ _) (IsLE SZ _) = Refl
+isLEAsym (IsLE (SS m_) (SS n_)) (IsLE _ _) = gcastWith (isLEAsym (IsLE m_ n_) (IsLE n_ m_)) Refl
 
 -- ============================== Test ==============================
 
@@ -219,6 +277,33 @@ snat10 = snat5 %+ snat5
 snat20 :: SNat (Nat10 + Nat10)
 snat20 = snat10 %+ snat10
 
+zeroLEZero :: IsLE Nat0 Nat0
+zeroLEZero = IsLE snat0 snat0
+
+zeroLEOne :: IsLE Nat0 Nat1
+zeroLEOne = isLEStep zeroLEZero
+
+zeroLETwo :: IsLE Nat0 Nat2
+zeroLETwo = isLEStep zeroLEOne
+
+zeroLEThree :: IsLE Nat0 Nat3
+zeroLEThree = isLEStep zeroLETwo
+
+oneLEOne :: IsLE Nat1 Nat1
+oneLEOne = isLESucc zeroLEZero
+
+oneLETwo :: IsLE Nat1 Nat2
+oneLETwo = isLEStep oneLEOne
+
+oneLEThree :: IsLE Nat1 Nat3
+oneLEThree = isLEStep oneLETwo
+
+twoLETwo :: IsLE Nat2 Nat2
+twoLETwo = isLESucc oneLEOne
+
+twoLEThree :: IsLE Nat2 Nat3
+twoLEThree = isLEStep twoLETwo
+
 main :: IO ()
 main = do
   traverse_
@@ -235,7 +320,7 @@ main = do
 spec :: SpecWith ()
 spec = describe "Nat" $ do
   let expectNatsEqual :: SNat n -> SNat m -> IO ()
-      expectNatsEqual n m = case isEqual n m of
+      expectNatsEqual n m = case n %~ m of
         Proved Refl -> n `shouldBe` m
         Disproved _ -> expectationFailure $ show n <> " != " <> show m
       expectSomeNatsEqual (SomeNat n) (SomeNat m) = expectNatsEqual n m
@@ -252,6 +337,18 @@ spec = describe "Nat" $ do
     expectSomeNatsEqual (someNat 1) (SomeNat snat1)
     expectSomeNatsEqual (someNat 2) (SomeNat snat2)
 
+  it "basic" $ do
+    let test m n expectProved = expectProof (m %~ n) expectProved (show m <> "," <> show n)
+    test snat0 snat0 True
+    test snat0 snat1 False
+    test snat0 snat2 False
+    test snat1 snat0 False
+    test snat1 snat1 True
+    test snat1 snat2 False
+    test snat2 snat0 False
+    test snat2 snat1 False
+    test snat2 snat2 True
+
   it "[toNatural]" $ do
     let test (SomeNat n) x = toNatural n `shouldBe` x
     traverse_
@@ -266,9 +363,9 @@ spec = describe "Nat" $ do
         (SomeNat snat20, 20)
       ]
 
-  it "[isEqual]" $ do
+  it "[ %~]" $ do
     let test :: (SomeNat, SomeNat, Bool) -> IO ()
-        test (SomeNat n, SomeNat m, expectProved) = expectProof (isEqual n m) expectProved (show n <> "," <> show m)
+        test (SomeNat n, SomeNat m, expectProved) = expectProof (n %~ m) expectProved (show n <> "," <> show m)
 
     traverse_
       test
@@ -315,13 +412,13 @@ spec = describe "Nat" $ do
       length x `shouldBe` 10201
       void $ return x
 
-    it "[isAddCommutative]" $ do
-      (isAddCommutative' @Nat0 @Nat1) `shouldBe` Refl
-      (isAddCommutative' @Nat1 @Nat0) `shouldBe` Refl
-      (isAddCommutative' @Nat1 @Nat2) `shouldBe` Refl
-      (isAddCommutative' @Nat2 @Nat1) `shouldBe` Refl
+    it "[sumIsCommutative]" $ do
+      (sumIsCommutative' @Nat0 @Nat1) `shouldBe` Refl
+      (sumIsCommutative' @Nat1 @Nat0) `shouldBe` Refl
+      (sumIsCommutative' @Nat1 @Nat2) `shouldBe` Refl
+      (sumIsCommutative' @Nat2 @Nat1) `shouldBe` Refl
 
-    it "[isAddCommutative] application" $ do
+    it "[sumIsCommutative] application" $ do
       x <-
         traverse
           ( \(SomeNat n, SomeNat m) -> do
@@ -332,13 +429,13 @@ spec = describe "Nat" $ do
           $ (,) <$> take 30 allNats <*> take 100 allNats
       length x `shouldBe` 3000
 
-    it "[isAddAssociative]" $ do
-      (isAddAssociative' @Nat0 @Nat1 @Nat3) `shouldBe` Refl
-      (isAddAssociative' @Nat1 @Nat0 @Nat3) `shouldBe` Refl
-      (isAddAssociative' @Nat1 @Nat3 @Nat0) `shouldBe` Refl
-      (isAddAssociative' @Nat1 @Nat3 @Nat5) `shouldBe` Refl
+    it "[sumIsAssociative]" $ do
+      (sumIsAssociative' @Nat0 @Nat1 @Nat3) `shouldBe` Refl
+      (sumIsAssociative' @Nat1 @Nat0 @Nat3) `shouldBe` Refl
+      (sumIsAssociative' @Nat1 @Nat3 @Nat0) `shouldBe` Refl
+      (sumIsAssociative' @Nat1 @Nat3 @Nat5) `shouldBe` Refl
 
-    it "[isAddAssociative] application" $ do
+    it "[sumIsAssociative] application" $ do
       x <-
         traverse
           ( \(SomeNat n, SomeNat m, SomeNat o) -> do
@@ -367,16 +464,98 @@ spec = describe "Nat" $ do
           (SomeNat <$> (snat2 %- snat3), Nothing)
         ]
 
-data List a = Empty | Succ a (List a) Int
+  describe "IsLE" $ do
+    it "[decideLE']" $ do
+      let test (SomeNat m) (SomeNat n) = expectProof (deciseIsLE m n) (toNatural m <= toNatural n) $ show m <> "<=" <> show n
+      x <- traverse (uncurry test) $ (,) <$> take 20 allNats <*> take 20 allNats
+      length x `shouldBe` 400
 
-pattern MyEmptyList :: List a
-pattern MyEmptyList = Empty
+    it "[isLEStep]" $ do
+      isLEStep zeroLEZero `shouldBe` zeroLEOne
+      isLEStep zeroLEOne `shouldBe` zeroLETwo
+      isLEStep oneLEOne `shouldBe` oneLETwo
+      isLEStep oneLETwo `shouldBe` oneLEThree
+      isLEStep twoLETwo `shouldBe` twoLEThree
 
-pattern MySucc :: a -> List a -> List a
-pattern MySucc a l <- Succ a l n
--- pattern MySucc a l <- Succ a (Succ _ l _) n
--- pattern MySucc a l <- Succ a (Succ _ l _) n | l' = l
-  where
-    MySucc a l
-      | Succ _ _ n <- l = Succ a l (n + 1)
-      | Empty <- l = Succ a Empty 1
+    it "[isLEStepL]" $ do
+      isLEStepL oneLEOne `shouldBe` zeroLEOne
+      isLEStepL oneLETwo `shouldBe` zeroLETwo
+      isLEStepL twoLETwo `shouldBe` oneLETwo
+      isLEStepL twoLEThree `shouldBe` oneLEThree
+
+    it "[isLEAsym]" $ do
+      isLEAsym zeroLEZero zeroLEZero `shouldBe` Refl
+      isLEAsym oneLEOne oneLEOne `shouldBe` Refl
+
+    it "[isLETrans]" $ do
+      isLETrans zeroLEZero zeroLEZero `shouldBe` zeroLEZero
+      isLETrans zeroLEZero zeroLEOne `shouldBe` zeroLEOne
+      isLETrans zeroLEZero zeroLETwo `shouldBe` zeroLETwo
+      isLETrans zeroLEOne oneLEOne `shouldBe` zeroLEOne
+      isLETrans zeroLEOne oneLETwo `shouldBe` zeroLETwo
+      isLETrans zeroLETwo twoLETwo `shouldBe` zeroLETwo
+      isLETrans oneLEOne oneLEOne `shouldBe` oneLEOne
+      isLETrans oneLEOne oneLETwo `shouldBe` oneLETwo
+      isLETrans oneLETwo twoLETwo `shouldBe` oneLETwo
+      isLETrans oneLETwo twoLEThree `shouldBe` oneLEThree
+      isLETrans twoLETwo twoLETwo `shouldBe` twoLETwo
+      isLETrans twoLETwo twoLEThree `shouldBe` twoLEThree
+
+data DoorState = DoorOpen | DoorClosed deriving (Show, Eq)
+
+genSingletons [''DoorState]
+
+data Elevator s n = Elevator (SDoorState s) (SNat n)
+
+moveUpOne' :: Elevator 'DoorClosed n -> Elevator 'DoorClosed (Nat1 + n)
+moveUpOne' (Elevator d n) = Elevator d (SS n)
+
+moveUp' :: SNat m -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (m + n)
+moveUp' SZ e = e
+moveUp' (SS m_) e = moveUpOne' $ moveUp' m_ e
+
+moveUpOne :: Elevator 'DoorClosed n -> Elevator 'DoorClosed (n + Nat1)
+moveUpOne (Elevator d n) =
+  Elevator d (SS n)
+    & gcastWith (sumIsCommutative n snat1)
+
+moveUp :: SNat m -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (n + m)
+moveUp SZ e@(Elevator _ n) = gcastWith (sumIsCommutative SZ n) e
+-- (n + (m - 1)) + 1  =   n + ((m - 1) + 1)
+--                    =   n + m
+moveUp (SS m_) e@(Elevator _ n) =
+  moveUpOne (moveUp m_ e)
+    & gcastWith (sumIsAssociative n m_ snat1)
+    & gcastWith (sumIsCommutative m_ snat1)
+
+
+type family Len (x :: [a]) where
+  Len '[] = 'Z
+  Len (a : as) = 'S (Len as)
+
+data SList (x :: [a]) where
+  SNil :: SList '[]
+  SCons :: (Sing (x :: a)) -> SList (xs :: [a]) -> SList (x : xs)
+
+-- toList :: SingKind k => [Demote k] -> SList ('[] :: [k])
+-- toList [] = SNil
+-- instance SingI (x :: [a])
+
+-- type instance Sing = SList
+
+v0 = SNil :: SList ('[] :: [Bool])
+
+v1 = SCons STrue v0 :: SList '[ 'True]
+
+v2 = SCons SFalse v1 :: SList '[ 'False, 'True]
+
+v3 = SCons SFalse v2 :: SList '[ 'False, 'False, 'True]
+
+data Fin (n :: Nat) where
+  FZ :: Fin ('S n)
+  FS :: Fin n -> Fin ('S n)
+
+sLookup :: SingKind k => SList (l :: [k]) -> Fin (Len l) -> Demote k
+sLookup (SCons a _) FZ = fromSing a
+sLookup (SCons _ l) (FS n) = sLookup l n
+sLookup SNil f = case f of {}
