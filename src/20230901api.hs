@@ -14,7 +14,7 @@ import Control.Monad.Logger
 import Control.Monad.State
 import Servant
 import TextShow
-import Control.Monad.Error (MonadError)
+import Control.Monad.Except (MonadError)
 
 type MyAPI =
   "api"

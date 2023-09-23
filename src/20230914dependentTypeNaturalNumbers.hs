@@ -23,16 +23,13 @@
 {-# OPTIONS_GHC -Werror=incomplete-patterns #-}
 
 import Control.Monad
-import Data.Bool.Singletons (SBool (..))
 import Data.Foldable
 import Data.Function ((&))
-import Data.Kind (Type)
-import Data.Singletons.Decide
 import Data.Singletons
+import Data.Singletons.Decide
 import Data.Singletons.TH (genSingletons)
 import Data.Type.Equality hiding (type (==))
 import GHC.Natural
-import Prelude.Singletons (type (<>))
 import Test.Hspec
 import Prelude hiding (pred, succ)
 
@@ -236,6 +233,108 @@ isLETrans (IsLE (SS m_) (SS n_)) (IsLE _ (SS o_)) = isLESucc $ isLETrans (IsLE m
 isLEAsym :: IsLE m n -> IsLE n m -> m :~: n
 isLEAsym (IsLE SZ _) (IsLE SZ _) = Refl
 isLEAsym (IsLE (SS m_) (SS n_)) (IsLE _ _) = gcastWith (isLEAsym (IsLE m_ n_) (IsLE n_ m_)) Refl
+
+-- ============================== Elevator ==============================
+--
+
+data DoorState = DoorOpen | DoorClosed deriving (Show, Eq)
+
+genSingletons [''DoorState]
+
+instance Eq (SDoorState s) where _ == _ = True
+
+instance Show (SDoorState s) where show = showDoorState
+
+showDoorState :: SDoorState s -> String
+showDoorState SDoorOpen = "DoorOpen"
+showDoorState SDoorClosed = "DoorClosed"
+
+data Elevator s n = Elevator (SDoorState s) (SNat n)
+
+instance Eq (Elevator s n) where _ == _ = True
+
+instance Show (Elevator s n) where show = showElevator
+
+showElevator :: Elevator s n -> String
+showElevator (Elevator d n) = "Elevator " <> showDoorState d <> " " <> showSNat n
+
+elevatorDoorState :: Elevator s n -> SDoorState s
+elevatorDoorState (Elevator d _) = d
+
+elevatorFloor :: Elevator s n -> SNat n
+elevatorFloor (Elevator _ n) = n
+
+-- Elevator motion
+moveUpOne :: Elevator 'DoorClosed n -> Elevator 'DoorClosed (Nat1 + n)
+moveUpOne (Elevator d n) = Elevator d (SS n)
+
+moveUpM :: SNat m -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (m + n)
+moveUpM SZ e = e
+moveUpM (SS m_) e = moveUpOne $ moveUpM m_ e
+
+moveDownOne :: Elevator 'DoorClosed (Nat1 + n) -> Elevator 'DoorClosed n
+moveDownOne (Elevator d (SS n_)) = Elevator d n_
+
+moveDownM :: IsLE m n -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (n - m)
+moveDownM (IsLE SZ _) e = e
+moveDownM (IsLE (SS m_) (SS n_)) (Elevator d _) = moveDownM (IsLE m_ n_) (Elevator d n_)
+
+-- Elevator motion commutative
+moveUpOne' :: Elevator 'DoorClosed n -> Elevator 'DoorClosed (n + Nat1)
+moveUpOne' (Elevator d n) =
+  Elevator d (SS n)
+    & gcastWith (sumIsCommutative n snat1)
+
+moveUpM' :: SNat m -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (n + m)
+moveUpM' SZ e@(Elevator _ n) = gcastWith (sumIsCommutative SZ n) e
+moveUpM' (SS m_) e@(Elevator _ n) =
+  moveUpOne' (moveUpM' m_ e)
+    & gcastWith (sumIsAssociative n m_ snat1)
+    & gcastWith (sumIsCommutative m_ snat1)
+
+-- Note: Is it possible to remove SingI n?
+moveDownOne' :: forall n. SingI n => Elevator 'DoorClosed (n + Nat1) -> Elevator 'DoorClosed n
+moveDownOne' (Elevator d m) =
+  Elevator d (pred m)
+    & gcastWith (sumIsCommutative (sing @n) snat1)
+
+moveDownM' :: IsLE m n -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (n - m)
+moveDownM' (IsLE SZ _) e = e
+moveDownM' (IsLE (SS m_) (SS n_)) (Elevator d _) = moveDownM' (IsLE m_ n_) (Elevator d n_)
+
+elevatorSpec :: SpecWith ()
+elevatorSpec = describe "Elevator" $ do
+  let e0 = Elevator SDoorClosed snat0
+      e1 = Elevator SDoorClosed snat1
+      e2 = Elevator SDoorClosed snat2
+      e3 = Elevator SDoorClosed snat3
+      e4 = Elevator SDoorClosed snat4
+
+  it "basic" $ do
+    elevatorFloor e0 `shouldBe` snat0
+    elevatorFloor e1 `shouldBe` snat1
+    elevatorDoorState e0 `shouldBe` SDoorClosed
+    elevatorDoorState e0 `shouldBe` SDoorClosed
+
+  it "moveUpOne" $ do
+    moveUpOne e0 `shouldBe` e1
+    moveUpOne e1 `shouldBe` e2
+    moveUpOne e2 `shouldBe` e3
+    moveUpOne e0 `shouldBe` moveUpOne' e0
+    moveUpOne e1 `shouldBe` moveUpOne' e1
+
+  it "moveUp" $ do
+    moveUpM snat0 e1 `shouldBe` e1
+    moveUpM snat1 e2 `shouldBe` e3
+    moveUpM snat1 e3 `shouldBe` e4
+    moveUpM snat5 e1 `shouldBe` moveUpM' snat5 e1
+    moveUpM snat0 e1 `shouldBe` moveUpM' snat0 e1
+    moveUpM snat1 e2 `shouldBe` moveUpM' snat1 e2
+    moveUpM snat1 e3 `shouldBe` moveUpM' snat1 e3
+
+  it "moveDown" $ do
+    moveDownOne e1 `shouldBe` moveDownOne' e1
+    moveDownM' (IsLE snat3 snat5) (Elevator SDoorClosed snat5) `shouldBe` moveDownM (IsLE snat3 snat5) (Elevator SDoorClosed snat5)
 
 -- ============================== Test ==============================
 
@@ -501,61 +600,4 @@ spec = describe "Nat" $ do
       isLETrans twoLETwo twoLETwo `shouldBe` twoLETwo
       isLETrans twoLETwo twoLEThree `shouldBe` twoLEThree
 
-data DoorState = DoorOpen | DoorClosed deriving (Show, Eq)
-
-genSingletons [''DoorState]
-
-data Elevator s n = Elevator (SDoorState s) (SNat n)
-
-moveUpOne' :: Elevator 'DoorClosed n -> Elevator 'DoorClosed (Nat1 + n)
-moveUpOne' (Elevator d n) = Elevator d (SS n)
-
-moveUp' :: SNat m -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (m + n)
-moveUp' SZ e = e
-moveUp' (SS m_) e = moveUpOne' $ moveUp' m_ e
-
-moveUpOne :: Elevator 'DoorClosed n -> Elevator 'DoorClosed (n + Nat1)
-moveUpOne (Elevator d n) =
-  Elevator d (SS n)
-    & gcastWith (sumIsCommutative n snat1)
-
-moveUp :: SNat m -> Elevator 'DoorClosed n -> Elevator 'DoorClosed (n + m)
-moveUp SZ e@(Elevator _ n) = gcastWith (sumIsCommutative SZ n) e
--- (n + (m - 1)) + 1  =   n + ((m - 1) + 1)
---                    =   n + m
-moveUp (SS m_) e@(Elevator _ n) =
-  moveUpOne (moveUp m_ e)
-    & gcastWith (sumIsAssociative n m_ snat1)
-    & gcastWith (sumIsCommutative m_ snat1)
-
-
-type family Len (x :: [a]) where
-  Len '[] = 'Z
-  Len (a : as) = 'S (Len as)
-
-data SList (x :: [a]) where
-  SNil :: SList '[]
-  SCons :: (Sing (x :: a)) -> SList (xs :: [a]) -> SList (x : xs)
-
--- toList :: SingKind k => [Demote k] -> SList ('[] :: [k])
--- toList [] = SNil
--- instance SingI (x :: [a])
-
--- type instance Sing = SList
-
-v0 = SNil :: SList ('[] :: [Bool])
-
-v1 = SCons STrue v0 :: SList '[ 'True]
-
-v2 = SCons SFalse v1 :: SList '[ 'False, 'True]
-
-v3 = SCons SFalse v2 :: SList '[ 'False, 'False, 'True]
-
-data Fin (n :: Nat) where
-  FZ :: Fin ('S n)
-  FS :: Fin n -> Fin ('S n)
-
-sLookup :: SingKind k => SList (l :: [k]) -> Fin (Len l) -> Demote k
-sLookup (SCons a _) FZ = fromSing a
-sLookup (SCons _ l) (FS n) = sLookup l n
-sLookup SNil f = case f of {}
+  elevatorSpec
