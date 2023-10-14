@@ -88,6 +88,7 @@ library
     , singletons >3 && <4
     , singletons-base ==3.*
     , singletons-th >3 && <4
+    , stm >2.5 && <3
     , streaming >0.2 && <0.3
     , streaming-bytestring >0.2 && <0.3
     , streaming-utils >0.2 && <0.3
@@ -172,6 +173,7 @@ executable app
     , singletons >3 && <4
     , singletons-base ==3.*
     , singletons-th >3 && <4
+    , stm >2.5 && <3
     , streaming >0.2 && <0.3
     , streaming-bytestring >0.2 && <0.3
     , streaming-utils >0.2 && <0.3

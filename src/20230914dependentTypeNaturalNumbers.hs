@@ -199,12 +199,12 @@ instance Show (IsLE m n) where show = showLEProof
 showLEProof :: forall m n. IsLE m n -> String
 showLEProof (IsLE m n) = "LEProof: " <> showSNat m <> " <= " <> showSNat n
 
-deciseIsLE :: SNat m -> SNat n -> Decision (IsLE m n)
-deciseIsLE SZ n = Proved $ IsLE SZ n
-deciseIsLE (SS m_) (SS n_) = case deciseIsLE m_ n_ of
+decideLE :: SNat m -> SNat n -> Decision (IsLE m n)
+decideLE SZ n = Proved $ IsLE SZ n
+decideLE (SS m_) (SS n_) = case decideLE m_ n_ of
   Proved (IsLE _ _) -> Proved $ IsLE (SS m_) (SS n_)
   Disproved f -> Disproved $ \(IsLE _ _) -> f (IsLE m_ n_)
-deciseIsLE (SS _) SZ = Disproved $ \case {}
+decideLE (SS _) SZ = Disproved $ \case {}
 
 withIsLE :: IsLE m n -> ((m <= n ~ 'True) => r) -> r
 withIsLE (IsLE _ _) f = f
@@ -565,7 +565,7 @@ spec = describe "Nat" $ do
 
   describe "IsLE" $ do
     it "[decideLE']" $ do
-      let test (SomeNat m) (SomeNat n) = expectProof (deciseIsLE m n) (toNatural m <= toNatural n) $ show m <> "<=" <> show n
+      let test (SomeNat m) (SomeNat n) = expectProof (decideLE m n) (toNatural m <= toNatural n) $ show m <> "<=" <> show n
       x <- traverse (uncurry test) $ (,) <$> take 20 allNats <*> take 20 allNats
       length x `shouldBe` 400
 

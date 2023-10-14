@@ -64,19 +64,3 @@ sLookup (SCons a _) FZ = fromSing a
 sLookup (SCons _ l) (FS n) = sLookup l n
 sLookup SNil f = case f of {}
 
-data B = T | F
-data SB (b :: B) where
-  ST :: SB 'T
-  SF :: SB 'F
-
-
-type SI :: a -> Type
-type family SI  where 
-  SI = SB
-
-class S k where
-  s :: SI (a :: k) -> k
-
-instance S B where
-  s ST = T
-  s SF = F

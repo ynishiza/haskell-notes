@@ -6,7 +6,7 @@ PROJECTNAME=haskell-notes
 DOCUMENTATION_DIR=docs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=25
+SRCFILESCOUNT=27
 
 default: help
 
