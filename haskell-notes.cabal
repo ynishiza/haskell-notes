@@ -111,6 +111,9 @@ library
 executable app
   main-is: Main.hs
   other-modules:
+      HaddockTest.A
+      HaddockTest.B
+      HaddockTest.NoExport
       ScratchUtils
       Paths_haskell_notes
   hs-source-dirs:

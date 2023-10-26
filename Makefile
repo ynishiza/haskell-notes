@@ -8,6 +8,10 @@ DOCUMENTATION_DIR=docs
 SRCFILES=$(call get_source_in_directory,src)
 SRCFILESCOUNT=27
 
+HADDOCK=stack exec -- haddock
+HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST
+HADDOCK_SRC=src/HaddockTest/*.hs
+
 default: help
 
 .PHONY: install
@@ -62,6 +66,18 @@ test: ## Run tests
 	@echo "Tests"
 	@stack test --test-arguments="+RTS -N"
 	make test-scripts
+
+compile-haddock-test: ## Run haddock test
+	 $(HADDOCK) -o docs --html --hyperlinked-source $(HADDOCK_OPTIONS) $(HADDOCK_SRC)
+	 @echo "Open ./docs/index.html"
+
+compile-haddock-test-latex: ## Run haddock test
+	 $(HADDOCK) -o docs --latex $(HADDOCK_OPTIONS) $(HADDOCK_SRC)
+	 @cd ./docs && pdflatex main.tex
+	 @echo "Open ./docs/main.pdf"
+
+compile-haddock-test-dump: ## Run haddock test
+	 $(HADDOCK) --dump-interface=./docs/docs.dump $(HADDOCK_OPTIONS) $(HADDOCK_SRC)
 
 .PHONY: ide
 ide: ## Check IDE setup

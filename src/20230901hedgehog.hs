@@ -1,11 +1,11 @@
 #!/usr/bin/env stack
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 {-
   Run with
     stack exec -- src/scratch/<name>.hs
     stack ghci -- src/scratch/<name>.hs
 -}
-{-# LANGUAGE TemplateHaskell #-}
 
 import Control.Monad
 import Data.Foldable
@@ -18,8 +18,12 @@ import Hedgehog.Range as R
 main :: IO ()
 main = do
   putStr "Hello"
-  testSuccess <- checkSequential $$discover
+  testSuccess <- checkSequential allTests
   unless testSuccess $ error "Test failed"
+
+allTests :: Group
+-- allTests = $$discover
+allTests = $$(discoverPrefix "prop")
 
 prop_linear :: Property
 prop_linear = testCoverage $ int $ linear 1 100
@@ -33,9 +37,16 @@ prop_linearWithResize = testCoverage $ resize 30 $ int $ linear 1 100
 prop_linearWithResizeOrigin :: Property
 prop_linearWithResizeOrigin = testCoverage $ resize 30 $ int $ linearFrom 50 1 100
 
+prop_a :: Property
 prop_a = testCoverage $ int (R.constant 1 100)
 
+prop_b :: Property
 prop_b = testCoverage $ int (R.exponential 1 100)
+
+prop_c :: Property
+prop_c = property $ do
+  x <- forAll $ int (R.constant 1 100)
+  (x < 200) === True
 
 testCoverage :: Gen Int -> Property
 testCoverage gen = property $ forAll gen >>= checkCoverage

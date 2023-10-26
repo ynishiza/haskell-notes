@@ -6,6 +6,7 @@ where
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
+-- | Test
 multilineString :: QuasiQuoter
 multilineString =
   QuasiQuoter
