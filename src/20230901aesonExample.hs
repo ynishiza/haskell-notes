@@ -4,7 +4,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
--- Run with 
+
+-- Run with
 --  stack exec -- src/scratch/<name>.hs
 --  stack ghci -- src/scratch/<name>.hs
 
@@ -15,8 +16,8 @@ import GHC.Generics
 
 data MyData1 where
   MyData1 ::
-    { someInt :: Int,
-      someString :: String
+    { someInt :: Int
+    , someString :: String
     } ->
     MyData1
   deriving stock (Show, Eq, Generic)
@@ -28,15 +29,15 @@ data MyData2 where
 
 instance FromJSON MyData2 where
   parseJSON =
-    genericParseJSON $
-      defaultOptions
+    genericParseJSON
+      $ defaultOptions
         { fieldLabelModifier = camelTo2 '_'
         }
 
 instance ToJSON MyData2 where
   toEncoding =
-    genericToEncoding $
-      defaultOptions
+    genericToEncoding
+      $ defaultOptions
         { fieldLabelModifier = camelTo2 '_'
         }
 
@@ -48,8 +49,8 @@ instance FromJSON Alpha where
     | s' == "b" = pure B
     | s' == "c" = pure C
     | otherwise = parseFail "ERROR"
-    where
-      s' = T.unpack s
+   where
+    s' = T.unpack s
   parseJSON _ = parseFail "ERROR"
 
 test :: IO ()
@@ -59,7 +60,7 @@ test = do
   print $ encode $ MyData1 1 "ABC"
 
   print $ decode' @MyData2 "{ \"some_field\": 1 }"
-  print $ encode $ MyData2 {someField = 1}
+  print $ encode $ MyData2{someField = 1}
 
 main :: IO ()
 main = test

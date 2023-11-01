@@ -10,11 +10,11 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
+import Control.Monad.Except (MonadError)
 import Control.Monad.Logger
 import Control.Monad.State
 import Servant
 import TextShow
-import Control.Monad.Except (MonadError)
 
 type MyAPI =
   "api"
@@ -24,18 +24,18 @@ type MyAPI =
     :> "user"
     :> "data"
     :> ( "name" :> Get '[JSON] String
-           :<|> "name" :> ReqBody '[JSON] String :> Post '[JSON] ()
-           :<|> "age" :> Get '[JSON] Int
-           :<|> "age" :> ReqBody '[JSON] Int :> Post '[JSON] ()
-           :<|> "sum" :> QueryParam' '[Required] "x" Int :> QueryParam' '[Required, Strict] "y" Int :> Get '[JSON] Int
+          :<|> "name" :> ReqBody '[JSON] String :> Post '[JSON] ()
+          :<|> "age" :> Get '[JSON] Int
+          :<|> "age" :> ReqBody '[JSON] Int :> Post '[JSON] ()
+          :<|> "sum" :> QueryParam' '[Required] "x" Int :> QueryParam' '[Required, Strict] "y" Int :> Get '[JSON] Int
        )
 
 myAPI :: Proxy MyAPI
 myAPI = Proxy @MyAPI
 
 data ServerState = MyState
-  { name :: String,
-    age :: Int
+  { name :: String
+  , age :: Int
   }
 
 newtype MyServer a = MyServer (StateT ServerState (LoggingT Handler) a)
@@ -43,11 +43,11 @@ newtype MyServer a = MyServer (StateT ServerState (LoggingT Handler) a)
     ( Functor
     )
   deriving newtype
-    ( Applicative,
-      Monad,
-      MonadState ServerState,
-      MonadError ServerError,
-      MonadLogger
+    ( Applicative
+    , Monad
+    , MonadState ServerState
+    , MonadError ServerError
+    , MonadLogger
     )
 
 server :: ServerT MyAPI (StateT ServerState (LoggingT Handler))
@@ -56,24 +56,24 @@ server =
       gets name
   )
     :<|> ( \name -> do
-             logDebugN $ "PUT name:" <> showt name
-             modify (\x -> x {name = name})
+            logDebugN $ "PUT name:" <> showt name
+            modify (\x -> x{name = name})
          )
     :<|> ( do
-             gets age
+            gets age
          )
     :<|> ( \age -> do
-             logDebugN $ "PUT age:" <> showt age
-             modify (\x -> x {age = age})
+            logDebugN $ "PUT age:" <> showt age
+            modify (\x -> x{age = age})
          )
     :<|> ( \x y -> do
-             return $ x + y
+            return $ x + y
          )
 
 mainServer :: Server MyAPI
 mainServer = hoistServer myAPI f server
-  where
-    f x = runStdoutLoggingT $ evalStateT x (MyState "" 0)
+ where
+  f x = runStdoutLoggingT $ evalStateT x (MyState "" 0)
 
 main :: IO ()
 main = pure ()

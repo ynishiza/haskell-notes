@@ -6,6 +6,8 @@
 -}
 {-# HLINT ignore "Use =<<" #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE EmptyCase #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PatternSynonyms #-}
@@ -16,12 +18,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE EmptyCase #-}
 
 import Data.Foldable
 import Data.Kind (Type)
-import Data.Singletons.TH (genSingletons, Sing(..), SingKind(..))
+import Data.Singletons.TH (Sing, genSingletons)
 import GHC.Natural
 
 -- ======================================== PeanoNatural ========================================
@@ -115,18 +115,18 @@ three = Succ two
 
 banner :: String -> String
 banner label = y <> " " <> label <> " " <> y
-  where
-    y = "****************************************"
+ where
+  y = "****************************************"
 
 main :: IO ()
 main = do
   let testPN :: String -> SomePeanoNatural -> IO ()
       testPN name (SomePeanoNatural x) = putStrLn $ name <> " : " <> pnShow x <> " \t\t isValid : " <> show (isValid $ pnValidate x)
       allNumbers =
-        [ ("zero", SomePeanoNatural zero),
-          ("one", SomePeanoNatural one),
-          ("two", SomePeanoNatural two),
-          ("three", SomePeanoNatural three)
+        [ ("zero", SomePeanoNatural zero)
+        , ("one", SomePeanoNatural one)
+        , ("two", SomePeanoNatural two)
+        , ("three", SomePeanoNatural three)
         ]
       testPNMaybe name (Just x) = testPN name x
       testPNMaybe name Nothing = putStrLn $ "NO VALUE:" <> name
@@ -135,14 +135,12 @@ main = do
   traverse_
     (uncurry testPN)
     $ allNumbers
-      <> [ ("bad zero", SomePeanoNatural (PeanoNatural SZ 11)),
-           ("bad one", SomePeanoNatural (PeanoNatural (SS SZ) 11))
-         ]
+    <> [ ("bad zero", SomePeanoNatural (PeanoNatural SZ 11))
+       , ("bad one", SomePeanoNatural (PeanoNatural (SS SZ) 11))
+       ]
 
   putStrLn $ banner "-|"
   traverse_ (uncurry testPNMaybe) $ (\(n, x) (m, y) -> (n <> " - " <> m, x -| y)) <$> allNumbers <*> allNumbers
 
   putStrLn $ banner "+|"
   traverse_ (uncurry testPN) $ (\(n, x) (m, y) -> (n <> " + " <> m, x +| y)) <$> allNumbers <*> allNumbers
-
-

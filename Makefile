@@ -6,7 +6,7 @@ PROJECTNAME=haskell-notes
 DOCUMENTATION_DIR=docs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=27
+SRCFILESCOUNT=29
 
 HADDOCK=stack exec -- haddock
 HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST
@@ -40,7 +40,7 @@ compile-scripts: ## Compile each script
 	set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
 	FILECOUNT="$${#FILES[@]}" ;\
-	[[ "$$FILECOUNT" != $(SRCFILESCOUNT) ]] && exit "Expected $(SRCFILESCOUNT) but found $$FILECOUNT. Check 'make debug'"; \
+	[[ "$$FILECOUNT" != $(SRCFILESCOUNT) ]] && echo "Expected $(SRCFILESCOUNT) but found $$FILECOUNT. Check 'make debug'" && exit 1; \
 	for file in "$${FILES[@]}"; do stack ghc -- $$file; done
 
 .PHONY: test-scripts
