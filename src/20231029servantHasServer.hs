@@ -37,6 +37,7 @@ import Network.HTTP.Types
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
+import Servant.API.Status
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.DelayedIO
 import Servant.Server.Internal.RouteResult
@@ -75,10 +76,11 @@ type API =
     :> ( MyPath "a" :> (MyGet String :<|> MyPost ())
           :<|> (MyPath "b" :> MyCapture Int :> MyGet Int)
           :<|> (MyPath "c" :> MyQueryParam "name" String :> MyQueryParam "id" Int :> MyGet String)
+          :<|> (MyPath "d" :> MyEmpty)
        )
 
 apiHandler :: Server API
-apiHandler = apiA :<|> apiB :<|> apiC
+apiHandler = apiA :<|> apiB :<|> apiC :<|> emptyHandler
  where
   apiA =
     return "a hello"
@@ -134,10 +136,10 @@ instance (HasServer api ctx, KnownSymbol path) => HasServer (MyPath path :> api)
     Context ctx ->
     Delayed env (Server (MyPath path :> api)) ->
     Router env
-  route _ ctx server = StaticRouter (M.fromList [(T.pack pathName, inner)]) []
+  route _ ctx delayedHandler = StaticRouter (M.fromList [(T.pack pathName, inner)]) []
    where
     pathName = asString @path Proxy
-    inner = route (Proxy @api) ctx server
+    inner = route (Proxy @api) ctx delayedHandler
   hoistServerWithContext _ = hoistServerWithContext (Proxy @api)
 
 -- ============================== Capture ==============================
@@ -197,31 +199,49 @@ instance (HasServer api ctx, KnownSymbol name, FromHttpApiData a) => HasServer (
 -- | Verb
 data MyVerbName = MyGET | MyPOST
 
-type MyPost = MyVerb 'MyPOST
+type MyPost = MyVerb 'MyPOST 201
 
-data MyVerb (name :: MyVerbName) a
+data MyVerb (name :: MyVerbName) (status :: Nat) a
 
-type MyGet = MyVerb 'MyGET
+type MyGet = MyVerb 'MyGET 200
 
-instance (Show a, StringRepresentable name) => HasServer (MyVerb name a) ctx where
-  type ServerT (MyVerb name a) handler = handler a
+instance (Show a, StringRepresentable name, KnownNat status) => HasServer (MyVerb name status a) ctx where
+  type ServerT (MyVerb name status a) handler = handler a
   route ::
     forall env.
-    Proxy (MyVerb name a) ->
+    Proxy (MyVerb name status a) ->
     Context ctx ->
-    Delayed env (Server (MyVerb name a)) ->
+    Delayed env (Server (MyVerb name status a)) ->
     Router env
-  route _ _ server = StaticRouter M.empty [processRequest]
+  route _ _ delayedHandler = StaticRouter M.empty [handleRequest]
    where
     method = asString $ Proxy @name
-    processRequest :: env -> Request -> (RouteResult Response -> IO ResponseReceived) -> IO ResponseReceived
-    processRequest env req k = runAction act env req k $ \a -> do
-      Route $ responseLBS status200 [header] $ B.pack $ show a
+    status = statusFromNat (Proxy @status)
+    handleRequest :: env -> Request -> (RouteResult Response -> IO ResponseReceived) -> IO ResponseReceived
+    handleRequest env req k = runAction delayedHandler' env req k $ \a -> do
+      Route $ responseLBS status [header] $ B.pack $ show a
      where
       header = (hAccept, "text/plain")
-      act = server `addMethodCheck` validateMethodName (requestMethod req) method
+      delayedHandler' = delayedHandler `addMethodCheck` validateMethodName (requestMethod req) method
 
-  hoistServerWithContext :: Proxy (MyVerb name a) -> Proxy ctx -> (forall x. m x -> n x) -> m a -> n a
+  hoistServerWithContext :: Proxy (MyVerb name status a) -> Proxy ctx -> (forall x. m x -> n x) -> m a -> n a
+  hoistServerWithContext _ _ f = f
+
+-- ============================== Verb ==============================
+--
+
+data MyEmpty 
+
+emptyHandler :: Monad m => ServerT MyEmpty m
+emptyHandler = return ()
+
+instance HasServer MyEmpty ctx where
+  type ServerT MyEmpty m = m ()
+  route _ _ delayedHandler =
+    StaticRouter
+      M.empty
+      [ \env req k -> runAction delayedHandler env req k (\_ -> Fail $ err500{errReasonPhrase = "EMPTY SERVER"})
+      ]
   hoistServerWithContext _ _ f = f
 
 validateMethodName :: Method -> Method -> DelayedIO ()

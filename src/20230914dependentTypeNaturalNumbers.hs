@@ -127,8 +127,8 @@ sumIsCommutative SZ m = gcastWith (sumFlipZ m) Refl
 --          =     (1 + m) + (n - 1)       by (SB)
 --          =     m + n                   by sumFlipS
 sumIsCommutative (SS (n_ :: SNat n_)) m =
-  gcastWith (sumIsCommutative n_ m :: n_ + m :~: m + n_) $
-    gcastWith (sumFlipS m n_ :: m + n :~: 'S (m + n_)) Refl
+  gcastWith (sumIsCommutative n_ m :: n_ + m :~: m + n_)
+    $ gcastWith (sumFlipS m n_ :: m + n :~: 'S (m + n_)) Refl
 
 sumIsAssociative' :: forall n m o. (SingI n, SingI m, SingI o) => (n + m) + o :~: n + (m + o)
 sumIsAssociative' = sumIsAssociative (sing @n) (sing @m) (sing @o)
@@ -293,7 +293,7 @@ moveUpM' (SS m_) e@(Elevator _ n) =
     & gcastWith (sumIsCommutative m_ snat1)
 
 -- Note: Is it possible to remove SingI n?
-moveDownOne' :: forall n. SingI n => Elevator 'DoorClosed (n + Nat1) -> Elevator 'DoorClosed n
+moveDownOne' :: forall n. (SingI n) => Elevator 'DoorClosed (n + Nat1) -> Elevator 'DoorClosed n
 moveDownOne' (Elevator d m) =
   Elevator d (pred m)
     & gcastWith (sumIsCommutative (sing @n) snat1)
@@ -407,9 +407,9 @@ main :: IO ()
 main = do
   traverse_
     (putStrLn . showSomeSNat)
-    [ SomeNat snat0,
-      SomeNat snat1,
-      SomeNat snat2
+    [ SomeNat snat0
+    , SomeNat snat1
+    , SomeNat snat2
     ]
 
   print $ showSNat snat10
@@ -452,14 +452,14 @@ spec = describe "Nat" $ do
     let test (SomeNat n) x = toNatural n `shouldBe` x
     traverse_
       (uncurry test)
-      [ (SomeNat snat0, 0),
-        (SomeNat snat1, 1),
-        (SomeNat snat2, 2),
-        (SomeNat snat3, 3),
-        (SomeNat snat4, 4),
-        (SomeNat snat5, 5),
-        (SomeNat snat10, 10),
-        (SomeNat snat20, 20)
+      [ (SomeNat snat0, 0)
+      , (SomeNat snat1, 1)
+      , (SomeNat snat2, 2)
+      , (SomeNat snat3, 3)
+      , (SomeNat snat4, 4)
+      , (SomeNat snat5, 5)
+      , (SomeNat snat10, 10)
+      , (SomeNat snat20, 20)
       ]
 
   it "[ %~]" $ do
@@ -468,45 +468,49 @@ spec = describe "Nat" $ do
 
     traverse_
       test
-      [ (someNat 0, someNat 0, True),
-        (someNat 0, someNat 1, False),
-        (someNat 0, someNat 2, False),
-        (someNat 1, someNat 0, False),
-        (someNat 1, someNat 1, True),
-        (someNat 1, someNat 2, False),
-        (someNat 2, someNat 0, False),
-        (someNat 2, someNat 1, False),
-        (someNat 2, someNat 2, True)
+      [ (someNat 0, someNat 0, True)
+      , (someNat 0, someNat 1, False)
+      , (someNat 0, someNat 2, False)
+      , (someNat 1, someNat 0, False)
+      , (someNat 1, someNat 1, True)
+      , (someNat 1, someNat 2, False)
+      , (someNat 2, someNat 0, False)
+      , (someNat 2, someNat 1, False)
+      , (someNat 2, someNat 2, True)
       ]
 
     x <-
-      traverse (\(n, m) -> test (someNat n, someNat m, m == n)) $
-        (,) <$> [0 .. 20] <*> [0 .. 20]
+      traverse (\(n, m) -> test (someNat n, someNat m, m == n))
+        $ (,)
+        <$> [0 .. 20]
+        <*> [0 .. 20]
     length x `shouldBe` 441
 
   describe "[+]" $ do
     it "basic" $ do
       traverse_
         (uncurry expectSomeNatsEqual)
-        [ (SomeNat (snat0 %+ snat0), someNat 0),
-          (SomeNat (snat0 %+ snat1), someNat 1),
-          (SomeNat (snat0 %+ snat2), someNat 2),
-          (SomeNat (snat0 %+ snat3), someNat 3),
-          (SomeNat (snat1 %+ snat0), someNat 1),
-          (SomeNat (snat1 %+ snat1), someNat 2),
-          (SomeNat (snat1 %+ snat2), someNat 3),
-          (SomeNat (snat1 %+ snat3), someNat 4),
-          (SomeNat (snat2 %+ snat0), someNat 2),
-          (SomeNat (snat2 %+ snat1), someNat 3),
-          (SomeNat (snat2 %+ snat2), someNat 4),
-          (SomeNat (snat2 %+ snat3), someNat 5)
+        [ (SomeNat (snat0 %+ snat0), someNat 0)
+        , (SomeNat (snat0 %+ snat1), someNat 1)
+        , (SomeNat (snat0 %+ snat2), someNat 2)
+        , (SomeNat (snat0 %+ snat3), someNat 3)
+        , (SomeNat (snat1 %+ snat0), someNat 1)
+        , (SomeNat (snat1 %+ snat1), someNat 2)
+        , (SomeNat (snat1 %+ snat2), someNat 3)
+        , (SomeNat (snat1 %+ snat3), someNat 4)
+        , (SomeNat (snat2 %+ snat0), someNat 2)
+        , (SomeNat (snat2 %+ snat1), someNat 3)
+        , (SomeNat (snat2 %+ snat2), someNat 4)
+        , (SomeNat (snat2 %+ snat3), someNat 5)
         ]
 
       let testSum (SomeNat n, SomeNat m, SomeNat x) = expectNatsEqual (n %+ m) x
       x <-
         traverse
           (\(n, m) -> testSum (someNat n, someNat m, someNat (n + m)))
-          $ (,) <$> [0 .. 100] <*> [0 .. 100]
+          $ (,)
+          <$> [0 .. 100]
+          <*> [0 .. 100]
 
       length x `shouldBe` 10201
       void $ return x
@@ -525,7 +529,9 @@ spec = describe "Nat" $ do
               expectSomeNatsEqual (SomeNat x) (SomeNat (add2 n m))
               expectSomeNatsEqual (SomeNat x) (SomeNat (add2 m n))
           )
-          $ (,) <$> take 30 allNats <*> take 100 allNats
+          $ (,)
+          <$> take 30 allNats
+          <*> take 100 allNats
       length x `shouldBe` 3000
 
     it "[sumIsAssociative]" $ do
@@ -542,25 +548,28 @@ spec = describe "Nat" $ do
               expectSomeNatsEqual (SomeNat ((n %+ m) %+ o)) (SomeNat x)
               expectSomeNatsEqual (SomeNat (n %+ (m %+ o))) (SomeNat x)
           )
-          $ (,,) <$> take 20 allNats <*> take 20 allNats <*> take 20 allNats
+          $ (,,)
+          <$> take 20 allNats
+          <*> take 20 allNats
+          <*> take 20 allNats
       length x `shouldBe` 8000
 
   describe "[-]" $ do
     it "basic" $ do
       traverse_
         (uncurry testSomeNatsMaybe)
-        [ (SomeNat <$> (snat0 %- snat0), Just (someNat 0)),
-          (SomeNat <$> (snat0 %- snat1), Nothing),
-          (SomeNat <$> (snat0 %- snat2), Nothing),
-          (SomeNat <$> (snat0 %- snat3), Nothing),
-          (SomeNat <$> (snat1 %- snat0), Just (someNat 1)),
-          (SomeNat <$> (snat1 %- snat1), Just (someNat 0)),
-          (SomeNat <$> (snat1 %- snat2), Nothing),
-          (SomeNat <$> (snat1 %- snat3), Nothing),
-          (SomeNat <$> (snat2 %- snat0), Just (someNat 2)),
-          (SomeNat <$> (snat2 %- snat1), Just (someNat 1)),
-          (SomeNat <$> (snat2 %- snat2), Just (someNat 0)),
-          (SomeNat <$> (snat2 %- snat3), Nothing)
+        [ (SomeNat <$> (snat0 %- snat0), Just (someNat 0))
+        , (SomeNat <$> (snat0 %- snat1), Nothing)
+        , (SomeNat <$> (snat0 %- snat2), Nothing)
+        , (SomeNat <$> (snat0 %- snat3), Nothing)
+        , (SomeNat <$> (snat1 %- snat0), Just (someNat 1))
+        , (SomeNat <$> (snat1 %- snat1), Just (someNat 0))
+        , (SomeNat <$> (snat1 %- snat2), Nothing)
+        , (SomeNat <$> (snat1 %- snat3), Nothing)
+        , (SomeNat <$> (snat2 %- snat0), Just (someNat 2))
+        , (SomeNat <$> (snat2 %- snat1), Just (someNat 1))
+        , (SomeNat <$> (snat2 %- snat2), Just (someNat 0))
+        , (SomeNat <$> (snat2 %- snat3), Nothing)
         ]
 
   describe "IsLE" $ do
