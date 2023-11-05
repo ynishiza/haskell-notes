@@ -1,4 +1,9 @@
 #!/usr/bin/env stack
+{-
+  Run with
+    stack exec -- src/scratch/<name>.hs
+    stack ghci -- src/scratch/<name>.hs
+-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -8,40 +13,43 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeFamilies #-}
-{-
-  Run with
-    stack exec -- src/scratch/<name>.hs
-    stack ghci -- src/scratch/<name>.hs
--}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 import Control.Concurrent
 import Control.Concurrent.STM
+import Control.Exception.Safe (throwM)
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Reader (MonadReader (..))
 import Data.ByteString.Lazy.Char8 qualified as B
 import Data.Foldable
 import Data.Function
+import Data.Kind
 import Data.Map qualified as M
+import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Text.IO qualified as T
 import Data.Typeable
 import GHC.Exts (IsString (..))
 import GHC.TypeLits
+import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.HTTP.Types
 import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.API.Status
+import Servant.Client hiding (Response)
+import Servant.Client.Core (RunClient)
 import Servant.Server.Internal.Delayed
 import Servant.Server.Internal.DelayedIO
 import Servant.Server.Internal.RouteResult
 import Servant.Server.Internal.Router
+import Test.Hspec
 
 type ShutdownHandler = TVar (IO ())
 
@@ -50,6 +58,11 @@ execShutdown = join . readTVarIO
 
 port :: Port
 port = 12345
+
+host :: HostPreference
+host = "localhost"
+
+testUrl = BaseUrl Http "localhost" port ""
 
 -- seconds
 shutdownTime :: Int
@@ -60,6 +73,9 @@ oneSecond = 1000 * 1000
 
 main :: IO ()
 main = do
+  hspec spec
+
+startTestServer = do
   shutdownVar <- newTVarIO (pure ())
   let settings = createSettings shutdownVar
       apiLayout = layout (Proxy @API)
@@ -95,7 +111,7 @@ createSettings :: ShutdownHandler -> Settings
 createSettings shutdownVar =
   defaultSettings
     & setPort port
-    & setHost "localhost"
+    & setHost host
     & setInstallShutdownHandler (atomically . writeTVar shutdownVar)
     & setGracefulShutdownTimeout (Just 1)
 
@@ -142,32 +158,46 @@ instance (HasServer api ctx, KnownSymbol path) => HasServer (MyPath path :> api)
     inner = route (Proxy @api) ctx delayedHandler
   hoistServerWithContext _ = hoistServerWithContext (Proxy @api)
 
+instance (HasClient m api) => HasClient m (MyPath path :> api) where
+  type Client m (MyPath path :> api) = Client m api
+
 -- ============================== Capture ==============================
 
 -- | Capture
-data MyCapture a
+data MyCapture (a :: Type)
 
 instance (HasServer api ctx, FromHttpApiData a, Typeable a) => HasServer (MyCapture a :> api) ctx where
   type ServerT (MyCapture a :> api) m = a -> ServerT api m
 
   route ::
+    forall env.
     Proxy (MyCapture a :> api) ->
     Context ctx ->
     Delayed env (Server (MyCapture a :> api)) ->
     Router env
-  route _ ctx delayedHandler = routed
+  route _ ctx handler = CaptureRouter [captureHint] $ route (Proxy @api) ctx (handler' handler)
    where
     captureHint = CaptureHint "x" (typeRep (Proxy @a)) -- used to show capture in layout
-    routed = CaptureRouter [captureHint] $ route (Proxy @api) ctx next
-    next = addCapture delayedHandler $ \capture -> case parseUrlPiece capture of
+    handler' :: Delayed env (Server (MyCapture a :> api)) -> Delayed (Text, env) (Server api)
+    handler' Delayed{..} =
+      Delayed
+        { capturesD = \(text, env) -> (,) <$> parseCapture text <*> capturesD env
+        , serverD = \(a, caps) params headers auth body req -> ($ a) <$> serverD caps params headers auth body req
+        , ..
+        }
+    handler'' = addCapture handler parseCapture -- same
+    parseCapture text = case parseUrlPiece text of
       Right a -> return a
-      Left err -> delayedFail $ err400{errReasonPhrase = T.unpack ("Failed to parse capture /:" <> capture <> "\n" <> err)}
+      Left err -> delayedFail $ err400{errReasonPhrase = T.unpack ("Failed to parse capture /:" <> text <> "\n" <> err)}
   hoistServerWithContext _ ctx f serverHandler = hoistServerWithContext (Proxy @api) ctx f . serverHandler
+
+instance (HasClient m api) => HasClient m (MyCapture a :> api) where
+  type Client m (MyCapture a :> api) = a -> Client m api
 
 -- ============================== Verb ==============================
 --
 
-data MyQueryParam (name :: Symbol) a
+data MyQueryParam (name :: Symbol) (a :: Type)
 
 instance (HasServer api ctx, KnownSymbol name, FromHttpApiData a) => HasServer (MyQueryParam name a :> api) ctx where
   type ServerT (MyQueryParam name a :> api) m = a -> ServerT api m
@@ -177,11 +207,19 @@ instance (HasServer api ctx, KnownSymbol name, FromHttpApiData a) => HasServer (
     Context ctx ->
     Delayed env (Server (MyQueryParam name a :> api)) ->
     Router env
-  route _ ctx delayedHandler = route (Proxy @api) ctx delayedHandler'
+  route _ ctx delayedHandler = route (Proxy @api) ctx (handler' delayedHandler)
    where
     name = symbolVal (Proxy @name)
     nameB = encodeUtf8 $ T.pack name
-    delayedHandler' = addParameterCheck delayedHandler $ do
+    handler' :: Delayed env (Server (MyQueryParam name a :> api)) -> Delayed env (Server api)
+    handler' Delayed{..} =
+      Delayed
+        { paramsD = (,) <$> parseParam <*> paramsD
+        , serverD = \cap (a, params) headers auth body req -> ($ a) <$> serverD cap params headers auth body req
+        , ..
+        }
+    handler'' = addParameterCheck delayedHandler parseParam -- same
+    parseParam = do
       req <- ask
       let params = queryString req
       case find ((== nameB) . fst) params of
@@ -193,6 +231,9 @@ instance (HasServer api ctx, KnownSymbol name, FromHttpApiData a) => HasServer (
 
   hoistServerWithContext _ ctx f handler = hoistServerWithContext (Proxy @api) ctx f . handler
 
+instance (HasClient m api) => HasClient m (MyQueryParam name a :> api) where
+  type Client m (MyQueryParam name a :> api) = a -> Client m api
+
 -- ============================== Verb ==============================
 --
 
@@ -201,7 +242,7 @@ data MyVerbName = MyGET | MyPOST
 
 type MyPost = MyVerb 'MyPOST 201
 
-data MyVerb (name :: MyVerbName) (status :: Nat) a
+data MyVerb (name :: MyVerbName) (status :: Nat) (a :: Type)
 
 type MyGet = MyVerb 'MyGET 200
 
@@ -213,26 +254,40 @@ instance (Show a, StringRepresentable name, KnownNat status) => HasServer (MyVer
     Context ctx ->
     Delayed env (Server (MyVerb name status a)) ->
     Router env
-  route _ _ delayedHandler = StaticRouter M.empty [handleRequest]
+  route _ _ handler = StaticRouter M.empty [handleRequest]
    where
     method = asString $ Proxy @name
     status = statusFromNat (Proxy @status)
     handleRequest :: env -> Request -> (RouteResult Response -> IO ResponseReceived) -> IO ResponseReceived
-    handleRequest env req k = runAction delayedHandler' env req k $ \a -> do
+    handleRequest env req k = runAction (handler' handler) env req k $ \a -> do
       Route $ responseLBS status [header] $ B.pack $ show a
      where
       header = (hAccept, "text/plain")
-      delayedHandler' = delayedHandler `addMethodCheck` validateMethodName (requestMethod req) method
+      handler' Delayed{..} =
+        Delayed
+          { methodD = methodD >> validateMethodName (requestMethod req) method
+          , ..
+          }
+      handler'' = handler `addMethodCheck` validateMethodName (requestMethod req) method -- same
 
   hoistServerWithContext :: Proxy (MyVerb name status a) -> Proxy ctx -> (forall x. m x -> n x) -> m a -> n a
   hoistServerWithContext _ _ f = f
 
+instance (RunClient m) => HasClient m (MyVerb name status a) where
+  type Client m (MyVerb name status a) = m a
+
+validateMethodName :: Method -> Method -> DelayedIO ()
+validateMethodName expected method =
+  if expected == method
+    then return ()
+    else delayedFail $ err400{errReasonPhrase = "Unknown method" <> show method}
+
 -- ============================== Verb ==============================
 --
 
-data MyEmpty 
+data MyEmpty
 
-emptyHandler :: Monad m => ServerT MyEmpty m
+emptyHandler :: (Monad m) => ServerT MyEmpty m
 emptyHandler = return ()
 
 instance HasServer MyEmpty ctx where
@@ -244,17 +299,38 @@ instance HasServer MyEmpty ctx where
       ]
   hoistServerWithContext _ _ f = f
 
-validateMethodName :: Method -> Method -> DelayedIO ()
-validateMethodName expected method =
-  if expected == method
-    then return ()
-    else delayedFail $ err400{errReasonPhrase = "Unknown method" <> show method}
+instance (RunClient m) => HasClient m MyEmpty where
+  type Client m MyEmpty = m ()
 
--- data A b where
---   A :: {myAValue :: Int -> b, myARun :: b -> c} -> A c
+-- ============================== Test ==============================
+--
+--
 
--- aa :: A String
--- aa = A (\(x :: Int) -> x) (show)
+(callA :<|> callA2) :<|> (callB :<|> callC :<|> callD) = client (Proxy @API)
 
--- runA :: Int -> A b -> b
--- runA x A {..} = myARun $ myAValue x
+spec :: Spec
+spec =
+  ( \runSpec -> do
+      manager <- newManager defaultManagerSettings
+      shutdownVar :: ShutdownHandler <- newTVarIO (pure ())
+      let
+        env = mkClientEnv manager testUrl
+      void $ forkIO $ startServer $ createSettings shutdownVar
+      threadDelay oneSecond
+      runSpec env
+      execShutdown shutdownVar
+  )
+    `aroundAll` baseSpec
+
+baseSpec :: SpecWith ClientEnv
+baseSpec = describe "" $ do
+  let
+    test :: ClientEnv -> ClientM a -> IO a
+    test env c = do
+      result <- runClientM c env
+      case result of
+        Left e -> throwM e
+        Right v -> return v
+
+  it "" $ \env -> do
+    pending

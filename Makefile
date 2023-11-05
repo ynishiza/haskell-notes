@@ -6,7 +6,7 @@ PROJECTNAME=haskell-notes
 DOCUMENTATION_DIR=docs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=29
+SRCFILESCOUNT=30
 
 HADDOCK=stack exec -- haddock
 HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST

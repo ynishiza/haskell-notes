@@ -1,5 +1,5 @@
 #!/usr/bin/env stack
--- Run with 
+-- Run with
 --  stack exec -- src/scratch/<name>.hs
 --  stack ghci -- src/scratch/<name>.hs
 {-# LANGUAGE DataKinds #-}
@@ -9,22 +9,22 @@
 {-# LANGUAGE TypeOperators #-}
 
 import Control.Monad.Catch hiding (Handler)
-import Control.Monad.Error (MonadError)
+import Control.Monad.Except (MonadError)
 import Control.Monad.Logger
 import Control.Monad.State
+import Data.Function ((&))
 import Servant
 import Servant.HTML.Blaze
-import Data.Function ((&))
 
 newtype MyHandler a = MyHandler (LoggingT (StateT String Handler) a)
   deriving newtype
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadThrow,
-      MonadCatch,
-      MonadLogger,
-      MonadError ServerError
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadThrow
+    , MonadCatch
+    , MonadLogger
+    , MonadError ServerError
     )
 
 type MyAPI = Get '[JSON] String :<|> "number" :> Get '[JSON] Int
@@ -40,16 +40,17 @@ myAPIServer =
       pure "OK"
   )
     :<|> ( do
-             logDebugN "number called"
-             pure 1
+            logDebugN "number called"
+            pure 1
          )
 
 -- step: convert transforms to Server MyAPI
 mainServer :: Server MyAPI -- Server MyAPI = ServerT MyAPI Handler
 mainServer = hoistServer myAPI f myAPIServer
-  where
-    f :: MyHandler a -> Handler a -- converter
-    f (MyHandler h) = runStdoutLoggingT h
+ where
+  f :: MyHandler a -> Handler a -- converter
+  f (MyHandler h) =
+    runStdoutLoggingT h
       & flip evalStateT ""
 
 main :: IO ()
