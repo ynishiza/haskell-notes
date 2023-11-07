@@ -62,6 +62,7 @@ port = 12345
 host :: HostPreference
 host = "localhost"
 
+testUrl :: BaseUrl
 testUrl = BaseUrl Http "localhost" port ""
 
 -- seconds
@@ -150,7 +151,7 @@ instance (HasServer api ctx, KnownSymbol path) => HasServer (MyPath path :> api)
   route ::
     Proxy (MyPath path :> api) ->
     Context ctx ->
-    Delayed env (Server (MyPath path :> api)) ->
+    Delayed env (Server api) ->
     Router env
   route _ ctx delayedHandler = StaticRouter (M.fromList [(T.pack pathName, inner)]) []
    where
@@ -173,12 +174,12 @@ instance (HasServer api ctx, FromHttpApiData a, Typeable a) => HasServer (MyCapt
     forall env.
     Proxy (MyCapture a :> api) ->
     Context ctx ->
-    Delayed env (Server (MyCapture a :> api)) ->
+    Delayed env (a -> Server api) ->
     Router env
   route _ ctx handler = CaptureRouter [captureHint] $ route (Proxy @api) ctx (handler' handler)
    where
     captureHint = CaptureHint "x" (typeRep (Proxy @a)) -- used to show capture in layout
-    handler' :: Delayed env (Server (MyCapture a :> api)) -> Delayed (Text, env) (Server api)
+    handler' :: Delayed env (a -> Server api) -> Delayed (Text, env) (Server api)
     handler' Delayed{..} =
       Delayed
         { capturesD = \(text, env) -> (,) <$> parseCapture text <*> capturesD env
@@ -205,13 +206,13 @@ instance (HasServer api ctx, KnownSymbol name, FromHttpApiData a) => HasServer (
   route ::
     Proxy (MyQueryParam name a :> api) ->
     Context ctx ->
-    Delayed env (Server (MyQueryParam name a :> api)) ->
+    Delayed env (a -> Server api) ->
     Router env
   route _ ctx delayedHandler = route (Proxy @api) ctx (handler' delayedHandler)
    where
     name = symbolVal (Proxy @name)
     nameB = encodeUtf8 $ T.pack name
-    handler' :: Delayed env (Server (MyQueryParam name a :> api)) -> Delayed env (Server api)
+    handler' :: Delayed env (a -> Server api) -> Delayed env (Server api)
     handler' Delayed{..} =
       Delayed
         { paramsD = (,) <$> parseParam <*> paramsD
@@ -252,7 +253,7 @@ instance (Show a, StringRepresentable name, KnownNat status) => HasServer (MyVer
     forall env.
     Proxy (MyVerb name status a) ->
     Context ctx ->
-    Delayed env (Server (MyVerb name status a)) ->
+    Delayed env (Handler a) ->
     Router env
   route _ _ handler = StaticRouter M.empty [handleRequest]
    where
@@ -306,6 +307,7 @@ instance (RunClient m) => HasClient m MyEmpty where
 --
 --
 
+-- TODO
 (callA :<|> callA2) :<|> (callB :<|> callC :<|> callD) = client (Proxy @API)
 
 spec :: Spec
@@ -323,7 +325,7 @@ spec =
     `aroundAll` baseSpec
 
 baseSpec :: SpecWith ClientEnv
-baseSpec = describe "" $ do
+baseSpec = describe "Main" $ do
   let
     test :: ClientEnv -> ClientM a -> IO a
     test env c = do

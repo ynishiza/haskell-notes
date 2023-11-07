@@ -1,4 +1,4 @@
-#!/usr/bin/env stack
+{-# LANGUAGE FlexibleInstances #-}
 {-
   Run with
     stack exec -- src/scratch/<name>.hs
@@ -15,6 +15,8 @@ main :: IO ()
 main = do
   print $ typeOfSomeValue $ SomeValue $ ValueStr "a"
   print $ typeOfSomeValue $ SomeValue $ ValueInt 1
+  print $ doSomethingWithSomeValue $ SomeValue $ ValueStr "a"
+  print $ doSomethingWithSomeValue $ SomeValue $ ValueInt 1
 
 data Dict (c :: Constraint) where
   Dict :: (c) => Dict c
@@ -28,9 +30,24 @@ data Value a where
 
 data SomeValue = forall a. SomeValue (Value a)
 
-valueProperties :: Value a -> Dict (Typeable a)
+instance Show SomeValue where
+  show (SomeValue (ValueInt x)) = show x
+  show (SomeValue (ValueStr x)) = x
+
+class DoSomething x where
+  doSomething :: x -> x
+
+instance DoSomething (Value String) where doSomething (ValueStr x) = ValueStr $ x <> x
+instance DoSomething (Value Int) where doSomething (ValueInt x) = ValueInt $ 2 * x
+
+valueProperties :: Value a -> Dict (Typeable a, DoSomething (Value a))
 valueProperties (ValueStr _) = Dict
 valueProperties (ValueInt _) = Dict
+
+doSomethingWithSomeValue :: SomeValue -> SomeValue
+doSomethingWithSomeValue (SomeValue v) = withDict (valueProperties v) $ SomeValue $ doSomething v
+-- doSomethingWithSomeValue (SomeValue v) = case (valueProperties v) of Dict -> SomeValue $ doSomething v
+-- doSomethingWithSomeValue (SomeValue v) = SomeValue $ doSomething v
 
 typeOfSomeValue :: SomeValue -> TypeRep
 -- typeOfSomeValue (SomeValue v) = case valueProperties v of Dict -> typeOf v
