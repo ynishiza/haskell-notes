@@ -6,7 +6,8 @@
 -}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-import Control.Monad.Base
+module Note20230901monadControls where
+
 import Control.Monad.Reader
 import Control.Monad.State
 import Control.Monad.Trans.Control

@@ -16,6 +16,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE PolyKinds #-}
 
+module Note20230901singleton where
+
 import Data.ByteString qualified as B
 import Data.Kind (Type)
 import Data.Singletons

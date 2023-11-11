@@ -4,6 +4,8 @@
 --  stack ghci -- src/scratch/<name>.hs
 {-# LANGUAGE GADTs #-}
 
+module Note20230901cont where
+
 import Control.Monad
 import qualified Control.Monad.Trans.Cont as C
 

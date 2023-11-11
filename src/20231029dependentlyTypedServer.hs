@@ -1,11 +1,4 @@
 #!/usr/bin/env stack
-{-
-  Run with
-    stack exec -- src/scratch/<name>.hs
-    stack ghci -- src/scratch/<name>.hs
-
-  Source: https://www.well-typed.com/blog/2015/12/dependently-typed-servers/
--}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
@@ -25,6 +18,16 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-
+  Run with
+    stack exec -- src/scratch/<name>.hs
+    stack ghci -- src/scratch/<name>.hs
+
+  Source: https://www.well-typed.com/blog/2015/12/dependently-typed-servers/
+-}
+
+module Note20231029dependentlyTypedServer where
 
 import Control.Concurrent
 import Control.Concurrent.STM
@@ -210,8 +213,6 @@ data MyValue a where
   ValueBool :: Bool -> MyValue Bool
   ValueNull :: MyValue Null
 
-data Some1 f = forall a. Some1 (f a)
-
 instance Show (MyValue a) where
   show (ValueString v) = "StringValue " <> v
   show (ValueInt v) = "ValueInt " <> show v
@@ -293,24 +294,9 @@ instance MimeRender JSON (MyValue a) where
   mimeRender p (ValueBool v) = mimeRender p v
   mimeRender _ ValueNull = "null"
 
-instance MimeRender JSON (Some1 MyValue) where
-  mimeRender p (Some1 value) = mimeRender p value
-
-parseValue :: String -> Either String (Some1 MyValue)
-parseValue text
-  | (Just Null) <- Aeson.decode bytes = Right $ Some1 ValueNull
-  | (Just v) <- (Aeson.decode @Bool) bytes = Right $ Some1 $ ValueBool v
-  | (Just v) <- (Aeson.decode @Int) bytes = Right $ Some1 $ ValueInt v
-  | otherwise = Right $ Some1 $ ValueString text
- where
-  bytes = BL.fromStrict $ encodeUtf8 (T.pack text)
-
 -- ========================================  Dependent API ========================================
 
-contextWithDefaultErrorHandlers :: Context ctx -> Context (ctx .++ DefaultErrorFormatters)
-contextWithDefaultErrorHandlers = (.++ (defaultErrorFormatters :. EmptyContext))
-
-type family Apply1 (f :: Type) (x :: Type)
+data Some1 f = forall a. Some1 (f a)
 
 class ParseCapture value where
   parseCapture :: Text -> Either String value
@@ -318,16 +304,21 @@ class ParseCapture value where
 instance ParseCapture (Some1 MyValue) where
   parseCapture = parseValue . T.unpack
 
-class HasDependentServer (value :: Type -> Type) (api :: Type) where
-  getDependentServer :: (ServerContext ctx) => value x -> Dict (HasServer (Apply1 api x) ctx)
+{- | Analogous to @HasServer api ctx@ but with a dependent @value x@ parameter such that the API may dependent on
+the value of @x@.
+-}
+class HasDependentServer (value :: Type -> Type) (api :: Type) ctx where
+  type DependentAPI api x
+  getDependentServer :: value x -> Dict (HasServer (DependentAPI api x) ctx)
 
+-- | Analogous to @Capture '[Required] "" :> api @
 data SomeCapture (value :: Type -> Type) (api :: Type)
 
-data SomeCaptureHandler (value :: Type -> Type) api m = SomeCaptureHandler (forall x. value x -> ServerT (Apply1 api x) m)
+data SomeCaptureHandler (value :: Type -> Type) api m = SomeCaptureHandler (forall x. value x -> ServerT (DependentAPI api x) m)
 
 instance
   ( ParseCapture (Some1 value)
-  , HasDependentServer value api
+  , HasDependentServer value api ctx
   , ServerContext ctx
   ) =>
   HasServer (SomeCapture value api) ctx
@@ -355,7 +346,7 @@ instance
     routeToHandler value Delayed{..} =
       withDict ((getDependentServer @value @api @ctx) value)
         $ route
-          (Proxy @(Apply1 api x))
+          (Proxy @(DependentAPI api x))
           ctx
           Delayed
             { serverD = \cap params headers auth body req -> (\(SomeCaptureHandler f) -> f value) <$> serverD cap params headers auth body req
@@ -371,17 +362,31 @@ instance
     SomeCaptureHandler value api n
   hoistServerWithContext _ ctx f (SomeCaptureHandler g) = SomeCaptureHandler $ \value -> hoistInner value (g value)
    where
-    hoistInner :: forall x. value x -> ServerT (Apply1 api x) m -> ServerT (Apply1 api x) n
-    hoistInner value = withDict ((getDependentServer @value @api @ctx) value) $ hoistServerWithContext (Proxy @(Apply1 api x)) ctx f
+    hoistInner :: forall x. value x -> ServerT (DependentAPI api x) m -> ServerT (DependentAPI api x) n
+    hoistInner value = withDict ((getDependentServer @value @api @ctx) value) $ hoistServerWithContext (Proxy @(DependentAPI api x)) ctx f
+
+contextWithDefaultErrorHandlers :: Context ctx -> Context (ctx .++ DefaultErrorFormatters)
+contextWithDefaultErrorHandlers = (.++ (defaultErrorFormatters :. EmptyContext))
 
 -- ========================================  Dependent API ========================================
 --
+instance MimeRender JSON (Some1 MyValue) where
+  mimeRender p (Some1 value) = mimeRender p value
+
+parseValue :: String -> Either String (Some1 MyValue)
+parseValue text
+  | (Just Null) <- Aeson.decode bytes = Right $ Some1 ValueNull
+  | (Just v) <- (Aeson.decode @Bool) bytes = Right $ Some1 $ ValueBool v
+  | (Just v) <- (Aeson.decode @Int) bytes = Right $ Some1 $ ValueInt v
+  | otherwise = Right $ Some1 $ ValueString text
+ where
+  bytes = BL.fromStrict $ encodeUtf8 (T.pack text)
+
 type MyValueOperation :: Type
 data MyValueOperation
 
-type instance Apply1 MyValueOperation x = Capture' '[Required] "operation" (Operation x) :> Get '[JSON] (MyValue x)
-
-instance HasDependentServer MyValue MyValueOperation where
+instance (ServerContext ctx) => HasDependentServer MyValue MyValueOperation ctx where
+  type DependentAPI MyValueOperation x = Capture' '[Required] "operation" (Operation x) :> Get '[JSON] (MyValue x)
   getDependentServer (ValueString _) = Dict
   getDependentServer (ValueInt _) = Dict
   getDependentServer (ValueBool _) = Dict

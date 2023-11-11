@@ -22,6 +22,8 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Werror=incomplete-patterns #-}
 
+module Note20230914dependentTypeNaturalNumbers where
+
 import Control.Monad
 import Data.Foldable
 import Data.Function ((&))

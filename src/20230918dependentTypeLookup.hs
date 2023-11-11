@@ -16,6 +16,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 
+module Note20230918dependentTypeLookup where
+
 import Data.List.Singletons (SList (..))
 import Data.Singletons.TH
 import Data.Singletons.Base.TH (SBool(..))

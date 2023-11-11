@@ -6,6 +6,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
+module Note20230901servantExample where
+
 import ServantAPI
 import Data.ByteString.Lazy.Char8 qualified as BS
 import Data.Function ((&))

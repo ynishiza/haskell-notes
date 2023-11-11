@@ -4,6 +4,8 @@
     stack exec -- src/scratch/<name>.hs
     stack ghci -- src/scratch/<name>.hs
 -}
+module Note20230901tsemExample where
+
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Concurrent.STM.TSem
@@ -18,9 +20,10 @@ afterDelay n action = threadDelay n >> action
 -- run action when lock is free
 runAction :: TSem -> IO () -> IO ()
 runAction sem action =
-  void $
-    forkIO $
-      atomically (waitTSem sem) >> action -- wait for lock
+  void
+    $ forkIO
+    $ atomically (waitTSem sem)
+    >> action -- wait for lock
 
 -- signal free lock
 signalFree :: TSem -> IO ()

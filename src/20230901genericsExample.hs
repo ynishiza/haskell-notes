@@ -10,6 +10,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
+module Note20230901genericsExample where
+
 import Data.Typeable
 import GHC.Generics
 

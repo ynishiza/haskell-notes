@@ -4,6 +4,7 @@ get_source_in_directory=$(wildcard $(1)/20*.hs)
 
 PROJECTNAME=haskell-notes
 DOCUMENTATION_DIR=docs
+SCRIPT_DOCUMENTATION_DIR=srcdocs
 
 SRCFILES=$(call get_source_in_directory,src)
 SRCFILESCOUNT=32
@@ -30,6 +31,7 @@ compile: ## Compile
 	# e.g. using lib/Utils.hs 
 	stack build --ghc-options -dynamic-too
 	make compile-scripts
+	make document-scripts
 
 .PHONY: compile-profile
 compile-profile: ## Compile with profiler
@@ -43,29 +45,33 @@ compile-scripts: ## Compile each script
 	[[ "$$FILECOUNT" != $(SRCFILESCOUNT) ]] && echo "Expected $(SRCFILESCOUNT) but found $$FILECOUNT. Check 'make debug'" && exit 1; \
 	for file in "$${FILES[@]}"; do stack ghc -- $$file; done
 
-.PHONY: test-scripts
-test-scripts: ## Test scripts
+.PHONY: document-scripts
+document-scripts: ## Compile script documentation
 	set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
-	for file in "$${FILES[@]}"; do stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
+	for file in "$${FILES[@]}"; do make document-script SCRIPT=$$file; done
+	# for file in "$${FILES[@]}"; do stack exec -- haddock -o srcdocs/$$(basename -s .hs $$file) --html --hyperlinked-source $$file; done
 
-.PHONY: document
-document: ## Build haddock documentation 
-	stack haddock --no-haddock-deps --haddock-arguments "-o $(DOCUMENTATION_DIR)" 
-
-.PHONY: lint
-lint: ## Lint
-	@stack exec -- hlint --verbose -h=.hlint.yaml src test
-
-.PHONY: benchmark
-benchmark: ## Run benchmark
-	@stack bench
+.PHONY: document-script-target
+document-script: ## Run haddock on a specific script
+	[[ ! -e $(SCRIPT) ]] && echo "Specify script with  'make " && exit 10 ;\
+	stack exec -- haddock -o $(SCRIPT_DOCUMENTATION_DIR)/$$(basename -s .hs $(SCRIPT)) --html --hyperlinked-source $(SCRIPT)
 
 .PHONY: test
 test: ## Run tests
 	@echo "Tests"
 	@stack test --test-arguments="+RTS -N"
 	make test-scripts
+
+.PHONY: test-scripts
+test-scripts: ## Test scripts
+	set -euo pipefail ; \
+	FILES=($(SRCFILES)) ;\
+	for file in "$${FILES[@]}"; do stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
+
+.PHONY: lint
+lint: ## Lint
+	@stack exec -- hlint --verbose -h=.hlint.yaml src test
 
 compile-haddock-test: ## Run haddock test
 	 $(HADDOCK) -o docs --html --hyperlinked-source $(HADDOCK_OPTIONS) $(HADDOCK_SRC)
@@ -97,6 +103,7 @@ clean: ## Clean
 	stack clean
 	rm -f *.hi *.o *.png *.svg *.html
 	rm -rf $(DOCUMENTATION_DIR)
+	rm -rf $(SCRIPT_DOCUMENTATION_DIR)
 	find lib/ src/ \( \! -iname '*.hs' \) -type f -delete
 
 .PHONY: help

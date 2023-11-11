@@ -6,6 +6,8 @@
 -}
 {-# LANGUAGE OverloadedStrings #-}
 
+module Note20230901streamParse where
+
 import Data.Attoparsec.ByteString.Char8
 import Data.Attoparsec.ByteString.Streaming as BS
 import Data.ByteString qualified as B

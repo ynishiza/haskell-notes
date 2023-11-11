@@ -11,7 +11,7 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE ViewPatterns #-}
 
-module AB (pattern Empty) where
+module Note20230918patternSynonym (pattern Empty) where
 
 import Data.Kind (Type)
 

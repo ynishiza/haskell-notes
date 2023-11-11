@@ -6,6 +6,7 @@
     stack exec -- src/scratch/<name>.hs
     stack ghci -- src/scratch/<name>.hs
 -}
+module Note20230901hedgehog where
 
 import Control.Monad
 import Data.Foldable

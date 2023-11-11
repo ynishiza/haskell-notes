@@ -8,13 +8,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
+module Note20230901servantHandlerExample where
+
 import Control.Monad.Catch hiding (Handler)
 import Control.Monad.Except (MonadError)
 import Control.Monad.Logger
 import Control.Monad.State
 import Data.Function ((&))
 import Servant
-import Servant.HTML.Blaze
 
 newtype MyHandler a = MyHandler (LoggingT (StateT String Handler) a)
   deriving newtype

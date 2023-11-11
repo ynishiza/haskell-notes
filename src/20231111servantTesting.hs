@@ -9,6 +9,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
+module Note20231111servantTesting where
+
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad

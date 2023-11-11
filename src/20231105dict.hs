@@ -9,6 +9,8 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 
+module Note20231105dict where
+
 import Data.Kind
 import Data.Typeable
 

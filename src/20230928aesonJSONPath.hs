@@ -7,6 +7,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+module Note20230928aesonJSONPath where
+
 import Data.Aeson
 import Data.Aeson.Types
 import Prelude hiding (lookup)

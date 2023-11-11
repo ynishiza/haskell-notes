@@ -8,11 +8,12 @@
 -- Run with
 --  stack exec -- src/scratch/<name>.hs
 --  stack ghci -- src/scratch/<name>.hs
-
+module Note20230901aesonExample where
 import Data.Aeson
 import Data.Aeson.Types
 import Data.Text qualified as T
 import GHC.Generics
+
 
 data MyData1 where
   MyData1 ::

@@ -8,6 +8,8 @@
 -}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
+module Note20231109bidirectionalParsing where
+
 main :: IO ()
 main = putStrLn "Hello"
 

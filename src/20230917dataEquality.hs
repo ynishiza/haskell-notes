@@ -5,6 +5,8 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 
+module Note20230917dataEquality where
+
 {-
   Run with
     stack exec -- src/scratch/<name>.hs

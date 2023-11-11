@@ -7,6 +7,8 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+module Note20231002aesonAlternative where
+
 import Control.Applicative
 import Data.Aeson
 import Data.Aeson.KeyMap

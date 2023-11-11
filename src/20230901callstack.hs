@@ -9,6 +9,8 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 
+module Note20230901callstack where
+
 import Control.Exception
 import GHC.Stack
 

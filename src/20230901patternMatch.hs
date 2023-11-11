@@ -7,6 +7,8 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wincomplete-patterns #-}
 
+module Note20230901patternMatch where
+
 main :: IO ()
 main = do
   print $ isSumEven2 1 1

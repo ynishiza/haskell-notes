@@ -19,6 +19,8 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+module Note20231029servantHasServer where
+
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception.Safe (throwM)

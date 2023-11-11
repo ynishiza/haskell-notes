@@ -20,6 +20,8 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Werror=incomplete-patterns #-}
 
+module Note20230918dependentTypeIsLE where
+
 import Control.Monad
 import Data.Kind (Type)
 import Data.Singletons.TH
@@ -91,7 +93,7 @@ leSucc = LESucc
 lePred :: LEProof ('S m) ('S n) -> LEProof m n
 lePred (LESucc proof) = proof
 
-leRefl :: forall n. SingI n => LEProof n n
+leRefl :: forall n. (SingI n) => LEProof n n
 leRefl = case sing @n of
   SZ -> LEZero
   SS x -> withSingI x leRefl
@@ -247,4 +249,10 @@ spec = describe "LEProof" $ do
 
   it "[leSwap]" $ do
     leSwap snat1 snat0 (\case {}) `shouldBe` oneLEOne
-    leSwap snat2 snat1 (\(LESucc x) -> case x of {}) `shouldBe` twoLETwo
+    leSwap
+      snat2
+      snat1
+      ( \case
+          (LESucc x) -> case x of {}
+      )
+      `shouldBe` twoLETwo

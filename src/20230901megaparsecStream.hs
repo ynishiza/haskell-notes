@@ -9,6 +9,8 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
+module Note20230901megaparsecStream where
+
 import Data.Function
 import Data.Functor
 import Data.List.Extra

@@ -21,5 +21,8 @@ jobs:
       - name: Compile
         run: make debug && make compile
 
+      - name: Document
+        run: make debug && make document-scripts
+
       - name: Test
         run: make debug && make test

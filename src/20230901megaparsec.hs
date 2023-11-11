@@ -8,6 +8,8 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
+module Note20230901megaparsec where
+
 import Control.Applicative
 import Text.Megaparsec
 import Text.Megaparsec.Char

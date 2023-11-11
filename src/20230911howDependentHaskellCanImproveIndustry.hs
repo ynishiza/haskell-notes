@@ -19,6 +19,8 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
+module Note20230911howDependentHaskellCanImproveIndustry where
+
 import Data.Foldable
 import Data.Kind (Type)
 import Data.Singletons.TH (Sing, genSingletons)
