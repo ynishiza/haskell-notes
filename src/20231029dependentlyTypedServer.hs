@@ -29,6 +29,9 @@
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Monad
+import Data.Aeson qualified as Aeson
+import Data.Aeson.Encoding qualified as Aeson
+import Data.ByteString.Lazy.Char8 qualified as BL
 import Data.Char (toLower, toUpper)
 import Data.Data
 import Data.Function
@@ -37,6 +40,7 @@ import Data.List (elemIndex)
 import Data.Maybe
 import Data.Text (Text)
 import Data.Text qualified as T
+import Data.Text.Encoding
 import Data.Text.IO qualified as T
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.HTTP.Types (status400)
@@ -100,7 +104,7 @@ type API =
     :> Summary "Sample"
     :> ( "hello"
           :> Get '[JSON] String
-          :<|> CaptureDependent MyValue MyValueOperation
+          :<|> SomeCapture MyValue MyValueOperation
        )
 
 api :: Proxy API
@@ -109,8 +113,8 @@ api = Proxy
 apiHandler :: Server API
 apiHandler = return "hello" :<|> dp
  where
-  dp :: Server (CaptureDependent MyValue MyValueOperation)
-  dp = CaptureDependentHandler $ \v op -> return $ applyOperation op v
+  dp :: Server (SomeCapture MyValue MyValueOperation)
+  dp = SomeCaptureHandler $ \v op -> return $ applyOperation op v
 
 data Dict (c :: Constraint) where
   Dict :: (c) => Dict c
@@ -125,11 +129,15 @@ type ClientAPI =
   "api"
     :> ( Capture' '[Required] "value" String :> Capture' '[Required] "operation" String :> Get '[JSON] String
           :<|> Capture' '[Required] "value" Int :> Capture' '[Required] "operation" String :> Get '[JSON] Int
+          :<|> Capture' '[Required] "value" Bool :> Capture' '[Required] "operation" String :> Get '[JSON] Bool
+          :<|> Capture' '[Required] "value" Null :> Capture' '[Required] "operation" String :> Get '[JSON] Null
        )
 
 stringValue :: String -> String -> ClientM String
 intValue :: Int -> String -> ClientM Int
-stringValue :<|> intValue = client (Proxy @ClientAPI)
+boolValue :: Bool -> String -> ClientM Bool
+nothingValue :: Null -> String -> ClientM Null
+stringValue :<|> intValue :<|> boolValue :<|> nothingValue = client (Proxy @ClientAPI)
 
 spec :: Spec
 spec =
@@ -161,20 +169,30 @@ baseSpec = describe "main" $ do
         Right v -> expectationFailure $ "Expected error but received result " <> show v
 
   it "GET /api/<string>/upper" $ \env -> do
-    testSuccess env (stringValue "abc" "upper") $ \x ->
-      x `shouldBe` "ABC"
+    testSuccess env (stringValue "abc" "upper") (`shouldBe` "ABC")
 
   it "GET /api/<string>/lower" $ \env -> do
-    testSuccess env (stringValue "ABC" "lower") $ \x ->
-      x `shouldBe` "abc"
+    testSuccess env (stringValue "ABC" "lower") (`shouldBe` "abc")
+
+  it "GET /api/<string>/reverse" $ \env -> do
+    testSuccess env (stringValue "ABC" "reverse") (`shouldBe` "CBA")
 
   it "GET /api/<int>/double" $ \env -> do
-    testSuccess env (intValue 123 "double") $ \x ->
-      x `shouldBe` 246
+    testSuccess env (intValue 123 "double") (`shouldBe` 246)
 
   it "GET /api/<int>/negate" $ \env -> do
-    testSuccess env (intValue 123 "negate") $ \x ->
-      x `shouldBe` -123
+    testSuccess env (intValue 123 "negate") (`shouldBe` -123)
+
+  it "GET /api/<bool>/not" $ \env -> do
+    testSuccess env (boolValue True "not") (`shouldBe` False)
+
+  it "GET /api/null/id" $ \env -> do
+    testSuccess env (nothingValue Null "id") (`shouldBe` Null)
+
+  it "GET /api/*/id" $ \env -> do
+    testSuccess env (stringValue "abc" "id") (`shouldBe` "abc")
+    testSuccess env (intValue 1 "id") (`shouldBe` 1)
+    testSuccess env (boolValue True "id") (`shouldBe` True)
 
   it "[error] GET /api/<int>/random" $ \env -> do
     testFail env (intValue 123 "random") $ \case
@@ -184,21 +202,30 @@ baseSpec = describe "main" $ do
 -- ========================================  MyValue ========================================
 --
 
+data Null = Null deriving stock (Show, Eq)
+
 data MyValue a where
   ValueString :: String -> MyValue String
   ValueInt :: Int -> MyValue Int
+  ValueBool :: Bool -> MyValue Bool
+  ValueNull :: MyValue Null
 
 data Some1 f = forall a. Some1 (f a)
 
 instance Show (MyValue a) where
   show (ValueString v) = "StringValue " <> v
   show (ValueInt v) = "ValueInt " <> show v
+  show (ValueBool v) = "ValueBool " <> show v
+  show ValueNull = "ValueNull"
 
 data Operation a where
   OpDouble :: Operation Int
   OpNegate :: Operation Int
   OpUpper :: Operation String
   OpLower :: Operation String
+  OpReverse :: Operation String
+  OpNot :: Operation Bool
+  OpIdentity :: Operation a
 
 instance Eq (Operation a) where
   x == y = operationName x == operationName y
@@ -206,8 +233,10 @@ instance Eq (Operation a) where
 class AllOperations a where
   allOperations :: [Operation a]
 
-instance AllOperations Int where allOperations = [OpDouble, OpNegate]
-instance AllOperations String where allOperations = [OpUpper, OpLower]
+instance AllOperations Int where allOperations = [OpDouble, OpNegate, OpIdentity]
+instance AllOperations String where allOperations = [OpUpper, OpLower, OpReverse, OpIdentity]
+instance AllOperations Bool where allOperations = [OpNot, OpIdentity]
+instance AllOperations Null where allOperations = [OpIdentity]
 
 instance (AllOperations a) => Enum (Operation a) where
   toEnum i = allOperations !! (i `mod` length (allOperations @a))
@@ -229,38 +258,52 @@ applyOperation OpDouble (ValueInt v) = ValueInt $ 2 * v
 applyOperation OpNegate (ValueInt v) = ValueInt $ negate v
 applyOperation OpUpper (ValueString v) = ValueString $ toUpper <$> v
 applyOperation OpLower (ValueString v) = ValueString $ toLower <$> v
+applyOperation OpReverse (ValueString v) = ValueString $ reverse v
+applyOperation OpNot (ValueBool v) = ValueBool $ not v
+applyOperation OpIdentity v = v
 
 operationName :: Operation a -> T.Text
 operationName OpDouble = "double"
 operationName OpNegate = "negate"
 operationName OpUpper = "upper"
 operationName OpLower = "lower"
+operationName OpReverse = "reverse"
+operationName OpNot = "not"
+operationName OpIdentity = "id"
 
 instance (AllOperations a) => FromHttpApiData (Operation a) where
   parseUrlPiece text =
     inverseMap operationName text
       & maybe (Left $ "Unsupported operation " <> text) Right
 
-instance FromHttpApiData (MyValue Int) where
-  -- parseUrlPiece ((reads @Int) . T.unpack -> [(v, _)]) = Right $ ValueInt v
-  parseUrlPiece text = case (reads @Int) (T.unpack text) of
-    [(v, _)] -> Right $ ValueInt v
-    _ -> Left $ "Failed to parse MyValue Int from " <> text
+instance ToHttpApiData Null where
+  toUrlPiece Null = "null"
 
-instance FromHttpApiData (MyValue String) where
-  parseUrlPiece text = Right $ ValueString $ T.unpack text
+instance Aeson.FromJSON Null where
+  parseJSON Aeson.Null = return Null
+  parseJSON _ = fail "Failed to parse Null"
+
+instance Aeson.ToJSON Null where
+  toJSON Null = error "Not used"
+  toEncoding Null = Aeson.null_
 
 instance MimeRender JSON (MyValue a) where
   mimeRender p (ValueInt v) = mimeRender p v
   mimeRender p (ValueString v) = mimeRender p v
+  mimeRender p (ValueBool v) = mimeRender p v
+  mimeRender _ ValueNull = "null"
 
 instance MimeRender JSON (Some1 MyValue) where
   mimeRender p (Some1 value) = mimeRender p value
 
 parseValue :: String -> Either String (Some1 MyValue)
-parseValue text = case reads @Int text of
-  [(v, "")] -> Right $ Some1 $ ValueInt v
-  _ -> Right $ Some1 $ ValueString text
+parseValue text
+  | (Just Null) <- Aeson.decode bytes = Right $ Some1 ValueNull
+  | (Just v) <- (Aeson.decode @Bool) bytes = Right $ Some1 $ ValueBool v
+  | (Just v) <- (Aeson.decode @Int) bytes = Right $ Some1 $ ValueInt v
+  | otherwise = Right $ Some1 $ ValueString text
+ where
+  bytes = BL.fromStrict $ encodeUtf8 (T.pack text)
 
 -- ========================================  Dependent API ========================================
 
@@ -278,20 +321,20 @@ instance ParseCapture (Some1 MyValue) where
 class HasDependentServer (value :: Type -> Type) (api :: Type) where
   getDependentServer :: (ServerContext ctx) => value x -> Dict (HasServer (Apply1 api x) ctx)
 
-data CaptureDependent (value :: Type -> Type) (api :: Type)
+data SomeCapture (value :: Type -> Type) (api :: Type)
 
-data CaptureDependentHandler (value :: Type -> Type) api m = CaptureDependentHandler (forall x. value x -> ServerT (Apply1 api x) m)
+data SomeCaptureHandler (value :: Type -> Type) api m = SomeCaptureHandler (forall x. value x -> ServerT (Apply1 api x) m)
 
 instance
   ( ParseCapture (Some1 value)
   , HasDependentServer value api
   , ServerContext ctx
   ) =>
-  HasServer (CaptureDependent value api) ctx
+  HasServer (SomeCapture value api) ctx
   where
-  type ServerT (CaptureDependent value api) m = CaptureDependentHandler value api m
+  type ServerT (SomeCapture value api) m = SomeCaptureHandler value api m
 
-  route :: forall env. Proxy (CaptureDependent value api) -> Context ctx -> Delayed env (CaptureDependentHandler value api Handler) -> Router env
+  route :: forall env. Proxy (SomeCapture value api) -> Context ctx -> Delayed env (SomeCaptureHandler value api Handler) -> Router env
   route _ ctx handler = RawRouter $ \env req onResponse -> case pathInfo req of
     [] -> onResponse $ Fail err500
     (p : prest) ->
@@ -308,25 +351,25 @@ instance
     onNotFoundError :: NotFoundErrorFormatter
     onNotFoundError = notFoundErrorFormatter $ getContextEntry $ contextWithDefaultErrorHandlers ctx
 
-    routeToHandler :: forall x. value x -> Delayed env (CaptureDependentHandler value api Handler) -> Router env
+    routeToHandler :: forall x. value x -> Delayed env (SomeCaptureHandler value api Handler) -> Router env
     routeToHandler value Delayed{..} =
       withDict ((getDependentServer @value @api @ctx) value)
         $ route
           (Proxy @(Apply1 api x))
           ctx
           Delayed
-            { serverD = \cap params headers auth body req -> (\(CaptureDependentHandler f) -> f value) <$> serverD cap params headers auth body req
+            { serverD = \cap params headers auth body req -> (\(SomeCaptureHandler f) -> f value) <$> serverD cap params headers auth body req
             , ..
             }
 
   hoistServerWithContext ::
     forall m n.
-    Proxy (CaptureDependent value api) ->
+    Proxy (SomeCapture value api) ->
     Proxy ctx ->
     (forall x. m x -> n x) ->
-    CaptureDependentHandler value api m ->
-    CaptureDependentHandler value api n
-  hoistServerWithContext _ ctx f (CaptureDependentHandler g) = CaptureDependentHandler $ \value -> hoistInner value (g value)
+    SomeCaptureHandler value api m ->
+    SomeCaptureHandler value api n
+  hoistServerWithContext _ ctx f (SomeCaptureHandler g) = SomeCaptureHandler $ \value -> hoistInner value (g value)
    where
     hoistInner :: forall x. value x -> ServerT (Apply1 api x) m -> ServerT (Apply1 api x) n
     hoistInner value = withDict ((getDependentServer @value @api @ctx) value) $ hoistServerWithContext (Proxy @(Apply1 api x)) ctx f
@@ -341,3 +384,5 @@ type instance Apply1 MyValueOperation x = Capture' '[Required] "operation" (Oper
 instance HasDependentServer MyValue MyValueOperation where
   getDependentServer (ValueString _) = Dict
   getDependentServer (ValueInt _) = Dict
+  getDependentServer (ValueBool _) = Dict
+  getDependentServer ValueNull = Dict

@@ -1,3 +1,4 @@
+#!/usr/bin/env stack
 {-# LANGUAGE FlexibleInstances #-}
 {-
   Run with
