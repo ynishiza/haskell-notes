@@ -18,6 +18,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 {-
   Run with
@@ -45,9 +46,10 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Text.IO qualified as T
+import GHC.Exts (IsString)
+import GHC.TypeLits
 import Network.HTTP.Client (defaultManagerSettings, newManager)
 import Network.HTTP.Types (status400)
-import Network.Wai
 import Network.Wai.Handler.Warp
 import Servant
 import Servant.Client hiding (Response)
@@ -64,14 +66,14 @@ oneSecond = 1000 * 1000
 shutdownServer :: ShutdownHandler -> IO ()
 shutdownServer = join . readTVarIO
 
-testHost :: HostPreference
+testHost :: (IsString s) => s
 testHost = "localhost"
 
 testPort :: Port
 testPort = 12345
 
 testUrl :: BaseUrl
-testUrl = BaseUrl Http "localhost" 12345 ""
+testUrl = BaseUrl Http testHost testPort ""
 
 main :: IO ()
 main = do
@@ -102,12 +104,20 @@ startServer settings =
   serve api apiHandler
     & runSettings settings
 
+data Dict (c :: Constraint) where
+  Dict :: (c) => Dict c
+
+withDict :: Dict c -> ((c) => a) -> a
+withDict Dict x = x
+
+-- * API
+
 type API =
   "api"
     :> Summary "Sample"
     :> ( "hello"
           :> Get '[JSON] String
-          :<|> SomeCapture MyValue MyValueOperation
+          :<|> SomeCapture "MyValue" MyValue MyValueOperation
        )
 
 api :: Proxy API
@@ -116,94 +126,13 @@ api = Proxy
 apiHandler :: Server API
 apiHandler = return "hello" :<|> dp
  where
-  dp :: Server (SomeCapture MyValue MyValueOperation)
+  dp :: Server (SomeCapture "MyValue" MyValue MyValueOperation)
   dp = SomeCaptureHandler $ \v op -> return $ applyOperation op v
-
-data Dict (c :: Constraint) where
-  Dict :: (c) => Dict c
-
-withDict :: Dict c -> ((c) => a) -> a
-withDict Dict x = x
-
--- ========================================  Test ========================================
---
-
-type ClientAPI =
-  "api"
-    :> ( Capture' '[Required] "value" String :> Capture' '[Required] "operation" String :> Get '[JSON] String
-          :<|> Capture' '[Required] "value" Int :> Capture' '[Required] "operation" String :> Get '[JSON] Int
-          :<|> Capture' '[Required] "value" Bool :> Capture' '[Required] "operation" String :> Get '[JSON] Bool
-          :<|> Capture' '[Required] "value" Null :> Capture' '[Required] "operation" String :> Get '[JSON] Null
-       )
-
-stringValue :: String -> String -> ClientM String
-intValue :: Int -> String -> ClientM Int
-boolValue :: Bool -> String -> ClientM Bool
-nothingValue :: Null -> String -> ClientM Null
-stringValue :<|> intValue :<|> boolValue :<|> nothingValue = client (Proxy @ClientAPI)
-
-spec :: Spec
-spec =
-  ( \runSpec -> do
-      manager <- newManager defaultManagerSettings
-      shutdownVar :: ShutdownHandler <- newTVarIO (pure ())
-      let
-        env = mkClientEnv manager testUrl
-      void $ forkIO $ startServer $ serverSettings shutdownVar
-      threadDelay oneSecond
-      runSpec env
-      shutdownServer shutdownVar
-  )
-    `aroundAll` baseSpec
-
-baseSpec :: SpecWith ClientEnv
-baseSpec = describe "main" $ do
-  let
-    testSuccess :: (HasCallStack) => ClientEnv -> ClientM a -> (a -> Expectation) -> Expectation
-    testSuccess env c onSuccess =
-      runClientM c env >>= \case
-        Left e -> expectationFailure $ "Received error:" <> show e
-        Right v -> onSuccess v
-
-    testFail :: (HasCallStack, Show a) => ClientEnv -> ClientM a -> (ClientError -> Expectation) -> Expectation
-    testFail env c onSuccess =
-      runClientM c env >>= \case
-        Left e -> onSuccess e
-        Right v -> expectationFailure $ "Expected error but received result " <> show v
-
-  it "GET /api/<string>/upper" $ \env -> do
-    testSuccess env (stringValue "abc" "upper") (`shouldBe` "ABC")
-
-  it "GET /api/<string>/lower" $ \env -> do
-    testSuccess env (stringValue "ABC" "lower") (`shouldBe` "abc")
-
-  it "GET /api/<string>/reverse" $ \env -> do
-    testSuccess env (stringValue "ABC" "reverse") (`shouldBe` "CBA")
-
-  it "GET /api/<int>/double" $ \env -> do
-    testSuccess env (intValue 123 "double") (`shouldBe` 246)
-
-  it "GET /api/<int>/negate" $ \env -> do
-    testSuccess env (intValue 123 "negate") (`shouldBe` -123)
-
-  it "GET /api/<bool>/not" $ \env -> do
-    testSuccess env (boolValue True "not") (`shouldBe` False)
-
-  it "GET /api/null/id" $ \env -> do
-    testSuccess env (nothingValue Null "id") (`shouldBe` Null)
-
-  it "GET /api/*/id" $ \env -> do
-    testSuccess env (stringValue "abc" "id") (`shouldBe` "abc")
-    testSuccess env (intValue 1 "id") (`shouldBe` 1)
-    testSuccess env (boolValue True "id") (`shouldBe` True)
-
-  it "[error] GET /api/<int>/random" $ \env -> do
-    testFail env (intValue 123 "random") $ \case
-      FailureResponse _ res -> responseStatusCode res `shouldBe` status400
-      _ -> expectationFailure "unexpected error"
 
 -- ========================================  MyValue ========================================
 --
+
+-- * MyValue
 
 data Null = Null deriving stock (Show, Eq)
 
@@ -296,6 +225,9 @@ instance MimeRender JSON (MyValue a) where
 
 -- ========================================  Dependent API ========================================
 
+-- * Dependent API
+
+--
 data Some1 f = forall a. Some1 (f a)
 
 class ParseCapture value where
@@ -305,37 +237,41 @@ instance ParseCapture (Some1 MyValue) where
   parseCapture = parseValue . T.unpack
 
 {- | Analogous to @HasServer api ctx@ but with a dependent @value x@ parameter such that the API may dependent on
-the value of @x@.
+the type of @x@.
 -}
 class HasDependentServer (value :: Type -> Type) (api :: Type) ctx where
-  type DependentAPI api x
-  getDependentServer :: value x -> Dict (HasServer (DependentAPI api x) ctx)
+  type DependentAPI value api x
+  getDependentServer :: value x -> Dict (HasServer (DependentAPI value api x) ctx)
 
--- | Analogous to @Capture '[Required] "" :> api @
-data SomeCapture (value :: Type -> Type) (api :: Type)
+{- | Analogous to @Capture name value :> api@ but with a dependent @value x@ parameter such that the
+ API may depend on the type of @x@.
+-}
+data SomeCapture (name :: Symbol) (value :: Type -> Type) (api :: Type)
 
-data SomeCaptureHandler (value :: Type -> Type) api m = SomeCaptureHandler (forall x. value x -> ServerT (DependentAPI api x) m)
+data SomeCaptureHandler (value :: Type -> Type) api m = SomeCaptureHandler (forall x. value x -> ServerT (DependentAPI value api x) m)
 
 instance
   ( ParseCapture (Some1 value)
+  , KnownSymbol name
   , HasDependentServer value api ctx
   , ServerContext ctx
   ) =>
-  HasServer (SomeCapture value api) ctx
+  HasServer (SomeCapture name value api) ctx
   where
-  type ServerT (SomeCapture value api) m = SomeCaptureHandler value api m
+  type ServerT (SomeCapture name value api) m = SomeCaptureHandler value api m
 
-  route :: forall env. Proxy (SomeCapture value api) -> Context ctx -> Delayed env (SomeCaptureHandler value api Handler) -> Router env
-  route _ ctx handler = RawRouter $ \env req onResponse -> case pathInfo req of
-    [] -> onResponse $ Fail err500
-    (p : prest) ->
-      case parseCapture @(Some1 value) p of
-        Right (Some1 value) ->
+  route :: forall env. Proxy (SomeCapture name value api) -> Context ctx -> Delayed env (SomeCaptureHandler value api Handler) -> Router env
+  route _ ctx handler =
+    CaptureRouter
+      [CaptureHint (T.pack $ symbolVal (Proxy @name)) (typeOf ())]
+      $ RawRouter
+      $ \(p, env) req onResponse -> case parseCapture @(Some1 value) p of
+        Right (Some1 (value :: value x)) ->
           runRouterEnv
             onNotFoundError
             (routeToHandler value handler)
             env
-            req{pathInfo = prest}
+            req
             onResponse
         Left err -> onResponse $ Fail err500{errReasonPhrase = "Failed to parse path " <> T.unpack p <> ". Error:" <> err}
    where
@@ -346,7 +282,7 @@ instance
     routeToHandler value Delayed{..} =
       withDict ((getDependentServer @value @api @ctx) value)
         $ route
-          (Proxy @(DependentAPI api x))
+          (Proxy @(DependentAPI value api x))
           ctx
           Delayed
             { serverD = \cap params headers auth body req -> (\(SomeCaptureHandler f) -> f value) <$> serverD cap params headers auth body req
@@ -355,21 +291,24 @@ instance
 
   hoistServerWithContext ::
     forall m n.
-    Proxy (SomeCapture value api) ->
+    Proxy (SomeCapture name value api) ->
     Proxy ctx ->
     (forall x. m x -> n x) ->
     SomeCaptureHandler value api m ->
     SomeCaptureHandler value api n
   hoistServerWithContext _ ctx f (SomeCaptureHandler g) = SomeCaptureHandler $ \value -> hoistInner value (g value)
    where
-    hoistInner :: forall x. value x -> ServerT (DependentAPI api x) m -> ServerT (DependentAPI api x) n
-    hoistInner value = withDict ((getDependentServer @value @api @ctx) value) $ hoistServerWithContext (Proxy @(DependentAPI api x)) ctx f
+    hoistInner :: forall x. value x -> ServerT (DependentAPI value api x) m -> ServerT (DependentAPI value api x) n
+    hoistInner value = withDict ((getDependentServer @value @api @ctx) value) $ hoistServerWithContext (Proxy @(DependentAPI value api x)) ctx f
 
 contextWithDefaultErrorHandlers :: Context ctx -> Context (ctx .++ DefaultErrorFormatters)
 contextWithDefaultErrorHandlers = (.++ (defaultErrorFormatters :. EmptyContext))
 
 -- ========================================  Dependent API ========================================
 --
+
+-- * Dependent API with 'MyValue'
+
 instance MimeRender JSON (Some1 MyValue) where
   mimeRender p (Some1 value) = mimeRender p value
 
@@ -386,8 +325,89 @@ type MyValueOperation :: Type
 data MyValueOperation
 
 instance (ServerContext ctx) => HasDependentServer MyValue MyValueOperation ctx where
-  type DependentAPI MyValueOperation x = Capture' '[Required] "operation" (Operation x) :> Get '[JSON] (MyValue x)
+  type DependentAPI MyValue MyValueOperation x = Capture' '[Required] "operation" (Operation x) :> Get '[JSON] (MyValue x)
   getDependentServer (ValueString _) = Dict
   getDependentServer (ValueInt _) = Dict
   getDependentServer (ValueBool _) = Dict
   getDependentServer ValueNull = Dict
+
+-- ========================================  Test ========================================
+--
+
+-- * Test
+
+type ClientAPI =
+  "api"
+    :> ( Capture' '[Required] "value" String :> Capture' '[Required] "operation" String :> Get '[JSON] String
+          :<|> Capture' '[Required] "value" Int :> Capture' '[Required] "operation" String :> Get '[JSON] Int
+          :<|> Capture' '[Required] "value" Bool :> Capture' '[Required] "operation" String :> Get '[JSON] Bool
+          :<|> Capture' '[Required] "value" Null :> Capture' '[Required] "operation" String :> Get '[JSON] Null
+       )
+
+stringValue :: String -> String -> ClientM String
+intValue :: Int -> String -> ClientM Int
+boolValue :: Bool -> String -> ClientM Bool
+nothingValue :: Null -> String -> ClientM Null
+stringValue :<|> intValue :<|> boolValue :<|> nothingValue = client (Proxy @ClientAPI)
+
+spec :: Spec
+spec =
+  ( \runSpec -> do
+      manager <- newManager defaultManagerSettings
+      shutdownVar :: ShutdownHandler <- newTVarIO (pure ())
+      let
+        env = mkClientEnv manager testUrl
+        info = layout (Proxy @API)
+      T.putStrLn info
+      void $ forkIO $ startServer $ serverSettings shutdownVar
+      threadDelay oneSecond
+      runSpec env
+      shutdownServer shutdownVar
+  )
+    `aroundAll` baseSpec
+
+baseSpec :: SpecWith ClientEnv
+baseSpec = describe "main" $ do
+  let
+    testSuccess :: (HasCallStack) => ClientEnv -> ClientM a -> (a -> Expectation) -> Expectation
+    testSuccess env c onSuccess =
+      runClientM c env >>= \case
+        Left e -> expectationFailure $ "Received error:" <> show e
+        Right v -> onSuccess v
+
+    testFail :: (HasCallStack, Show a) => ClientEnv -> ClientM a -> (ClientError -> Expectation) -> Expectation
+    testFail env c onSuccess =
+      runClientM c env >>= \case
+        Left e -> onSuccess e
+        Right v -> expectationFailure $ "Expected error but received result " <> show v
+
+  it "GET /api/<string>/upper" $ \env -> do
+    testSuccess env (stringValue "abc" "upper") (`shouldBe` "ABC")
+
+  it "GET /api/<string>/lower" $ \env -> do
+    testSuccess env (stringValue "ABC" "lower") (`shouldBe` "abc")
+
+  it "GET /api/<string>/reverse" $ \env -> do
+    testSuccess env (stringValue "ABC" "reverse") (`shouldBe` "CBA")
+
+  it "GET /api/<int>/double" $ \env -> do
+    testSuccess env (intValue 123 "double") (`shouldBe` 246)
+
+  it "GET /api/<int>/negate" $ \env -> do
+    testSuccess env (intValue 123 "negate") (`shouldBe` -123)
+
+  it "GET /api/<bool>/not" $ \env -> do
+    testSuccess env (boolValue True "not") (`shouldBe` False)
+
+  it "GET /api/null/id" $ \env -> do
+    testSuccess env (nothingValue Null "id") (`shouldBe` Null)
+
+  it "GET /api/*/id" $ \env -> do
+    testSuccess env (stringValue "abc" "id") (`shouldBe` "abc")
+    testSuccess env (intValue 1 "id") (`shouldBe` 1)
+    testSuccess env (boolValue True "id") (`shouldBe` True)
+
+  it "[error] GET /api/<int>/random" $ \env -> do
+    testFail env (intValue 123 "random") $ \case
+      FailureResponse _ res -> responseStatusCode res `shouldBe` status400
+      _ -> expectationFailure "unexpected error"
