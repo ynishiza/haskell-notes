@@ -4,57 +4,44 @@
     stack exec -- src/scratch/<name>.hs
     stack ghci -- src/scratch/<name>.hs
 -}
-{-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE OverloadedStrings #-}
-
-import Control.Monad
-import Data.Aeson
-import Data.Aeson.Types
-import Data.Function
-import GHC.Exts (IsString (..))
+-- {-# LANGUAGE FlexibleInstances #-}
+-- {-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE KindSignatures #-}
 
 main :: IO ()
 main = do
-  print $ eitherDecode @MyData "{}"
-  print $ eitherDecode @MyData "{ \"a\": {} }"
-  print $ eitherDecode @MyData "{ \"a\": { \"b\": {} } }"
-  print $ eitherDecode @MyData "{ \"a\": { \"b\": { \"c\": true } } }"
-  print $ eitherDecode @MyBadData "{}"
-  print $ eitherDecode @MyBadData "{ \"a\": {} }"
-  print $ eitherDecode @MyBadData "{ \"a\": { \"b\": {} } }"
-  print $ eitherDecode @MyBadData "{ \"a\": { \"b\": { \"c\": true } } }"
+  pure ()
+  -- putStrLn $ myShow (1 :: Int)
+  -- putStrLn $ myShow True
 
-newtype MyData = MyData Bool deriving stock (Show, Eq)
+  -- putStrLn $ myShow2 (1 :: Int)
+  -- putStrLn $ myShow2 True
+  -- print $ (doSomething @[Int]) [1]
+  -- print $ (doSomething @(Maybe Int)) $ Just 1
 
-newtype MyBadData = MyBadData Bool deriving stock (Show, Eq)
+class MyShow a where
+  myShow :: a -> String
 
-instance FromJSON MyData where
-  -- parseJSON v =
-  --   withObject "base" (.: "a") v
-  --     >>= (<?> Key "a")
-  --       . ( withObject "b" (.: "b")
-  --             >=> (<?> Key "b")
-  --               . ( withObject "c" (.: "c")
-  --                     >=> withBool "" (return . MyData)
-  --                 )
-  --         )
+instance (Show a, Show b) => MyShow (Either a b) where
 
-  parseJSON = withObject "base" $ \obj -> do
-    (Object a) <- obj .: "a"
-    do
-      (Object b) <- a .: "b"
-      do
-        (Bool c) <- b .: "c"
-        return $ MyData c
-        <?> Key "b"
-      <?> Key "a"
+-- instance {-# OVERLAPPABLE #-} (Show a) => MyShow a where -- default
+-- instance {-# OVERLAPS #-} (Show a) => MyShow a where -- default
+--   myShow = show
+-- instance MyShow Int where -- Int specific
+--   myShow v = "INT " ++ show v
+-- instance MyShow Bool where -- Bool specific
+--   myShow v = "BOOL " ++ show v
 
-instance FromJSON MyBadData where
-  parseJSON = withObject "base" $ \obj -> do
-    (Object a) <- obj .: "a"
-    (Object b) <- a .: "b"
-    (Bool c) <- b .: "c"
-    return $ MyBadData c
+-- class MyShow2 a where
+--   myShow2 :: a -> String
 
-inKey :: String -> Parser a -> Parser a
-inKey key p = p <?> Key (fromString key)
+-- instance (Show a) => MyShow2 a where -- default
+--   myShow2 = show
+-- instance {-# OVERLAPPING #-} MyShow2 Int where -- Int specific
+--   myShow2 v = "INT " ++ show v
+-- instance {-# OVERLAPS #-} MyShow2 Bool where -- Bool specific
+--   myShow2 v = "BOOL " ++ show v
+
+
+-- class MyS (a :: * -> *) where
+-- instance MyS (Either a)

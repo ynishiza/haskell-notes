@@ -91,16 +91,23 @@ testUrl = BaseUrl Http testHost testPort ""
 spec :: Spec
 spec =
   ( \runTest -> do
+      -- Step: create settings
       shutdownHandler <- newShutdownHandler
       manager <- newManager defaultManagerSettings
       let clientEnv = mkClientEnv manager testUrl
 
+      -- Step: Start server on a different thread
       _ <- forkIO $ do
         putStrLn $ "Starting server " <> testHost <> ":" <> show testPort
         startServer shutdownHandler
 
+      -- Note: wait a bit to allow server to start
       threadDelay oneSecond
+
+      -- Step: run test
       runTest clientEnv
+
+      -- Step: cleanup
       requestShutdown shutdownHandler
   )
     `aroundAll` baseSpec

@@ -54,7 +54,7 @@ document-scripts: ## Compile script documentation
 
 .PHONY: document-script-target
 document-script: ## Run haddock on a specific script
-	[[ ! -e $(SCRIPT) ]] && echo "Specify script with  'make " && exit 10 ;\
+	[[ ! -e $(SCRIPT) ]] && echo "Specify script with  'make SCRIPT=<path> document-script'" && exit 10 ;\
 	stack exec -- haddock -o $(SCRIPT_DOCUMENTATION_DIR)/$$(basename -s .hs $(SCRIPT)) --html --hyperlinked-source $(SCRIPT)
 
 .PHONY: test
