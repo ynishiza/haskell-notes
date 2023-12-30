@@ -8,6 +8,7 @@
 -}
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20231109bidirectionalParsing where
 
 main :: IO ()

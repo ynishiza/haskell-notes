@@ -11,6 +11,7 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230918patternSynonym (pattern Empty) where
 
 import Data.Kind (Type)

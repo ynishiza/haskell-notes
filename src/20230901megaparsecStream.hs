@@ -9,6 +9,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE RecordWildCards #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901megaparsecStream where
 
 import Data.Function

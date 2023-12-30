@@ -5,6 +5,7 @@
 {-# LANGUAGE StandaloneKindSignatures #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230917dataEquality where
 
 {-

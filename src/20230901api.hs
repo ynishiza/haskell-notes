@@ -10,6 +10,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901api where
 
 import Control.Monad.Except (MonadError)

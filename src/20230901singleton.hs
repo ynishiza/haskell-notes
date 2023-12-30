@@ -16,6 +16,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 {-# LANGUAGE PolyKinds #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901singleton where
 
 import Data.ByteString qualified as B

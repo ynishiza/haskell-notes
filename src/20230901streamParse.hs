@@ -6,6 +6,7 @@
 -}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901streamParse where
 
 import Data.Attoparsec.ByteString.Char8

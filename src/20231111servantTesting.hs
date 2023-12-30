@@ -9,6 +9,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20231111servantTesting where
 
 import Control.Concurrent

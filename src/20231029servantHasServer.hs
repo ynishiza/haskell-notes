@@ -23,6 +23,7 @@
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20231029servantHasServer where
 
 import Control.Concurrent
@@ -325,7 +326,9 @@ instance HasServer MyEmpty ctx where
   route _ _ delayedRouter =
     StaticRouter
       M.empty
-      [ \env req k -> runAction delayedRouter env req k (\_ -> Fail $ err500{errReasonPhrase = "EMPTY SERVER"})
+      [ \env req k ->
+          runAction delayedRouter env req k 
+            (\_ -> Fail $ err500{errReasonPhrase = "EMPTY SERVER"})
       ]
   hoistServerWithContext _ _ f = f
 

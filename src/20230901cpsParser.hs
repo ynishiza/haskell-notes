@@ -29,14 +29,16 @@ import GHC.Stack
 
 -- ============================== Start Base ==============================
 
-data CParserError state = HasCallStack => CParserError state Text
+data CParserError state = (HasCallStack) => CParserError state Text
 
-deriving stock instance Show state => Show (CParserError state)
+deriving stock instance (Show state) => Show (CParserError state)
 
 deriving anyclass instance (Show state, Typeable state) => Exception (CParserError state)
 
+-- Success handler
 type OnSuccess state result m a = (a, state) -> m result
 
+-- Error handler
 type OnFail error result m = error -> m result
 
 -- | CPS style parser
@@ -63,24 +65,24 @@ instance Monad (CParserT error state result m) where
 instance MonadFail (CParserT (CParserError state) state result m) where
   fail msg = CParserT $ \ust _ ke -> ke (CParserError ust (T.pack msg))
 
-execCParser :: Monad m => CParserT error state (Either error (a, state)) m a -> state -> m (Either error (a, state))
+execCParser :: (Monad m) => CParserT error state (Either error (a, state)) m a -> state -> m (Either error (a, state))
 execCParser (CParserT f) i = f i (return . Right) (return . Left)
 
 instance MonadTrans (CParserT error state result) where
   lift m = CParserT $ \state k _ -> m >>= k . (,state)
 
-instance MonadBase b m => MonadBase b (CParserT error state result m) where
+instance (MonadBase b m) => MonadBase b (CParserT error state result m) where
   liftBase x = lift $ liftBase x
 
-instance MonadReader r m => MonadReader r (CParserT error state result m) where
+instance (MonadReader r m) => MonadReader r (CParserT error state result m) where
   ask = lift ask
   local f (CParserT p) = CParserT $ \state k ke -> local f (p state k ke)
 
-instance S.MonadState r m => S.MonadState r (CParserT error state result m) where
+instance (S.MonadState r m) => S.MonadState r (CParserT error state result m) where
   get = lift S.get
   put x = lift $ S.put x
 
-instance MonadWriter w m => MonadWriter w (CParserT error state result m) where
+instance (MonadWriter w m) => MonadWriter w (CParserT error state result m) where
   tell x = lift $ tell x
   pass (CParserT p) = CParserT $ \state k ke -> p state (\(a, state') -> pass (pure a) >>= k . (,state')) ke
   listen (CParserT p) = CParserT $ \state k ke ->
@@ -90,22 +92,31 @@ instance MonadWriter w m => MonadWriter w (CParserT error state result m) where
       )
       ke
 
+instance (Semigroup a) => Semigroup (CParserT error state result m a) where
+  p <> q = (<>) <$> p <*> q
+
+instance (Monoid a) => Monoid (CParserT error state result m a) where
+  mempty = pure mempty
+
 -- ============================== End Base ==============================
 
 type ParserState = (Int, String)
 
 type Parser result = CParserT (CParserError ParserState) ParserState result Identity
 
-satisfy :: HasCallStack => Text -> (Char -> Bool) -> Parser result Char
-satisfy name f = CParserT g
-  where
-    g s@(i, c : rest) k ke = if f c then k (c, (i + 1, rest)) else ke (CParserError s ("[satisfy] Failed to parse " <> name))
-    g s@(_, []) _ ke = ke $ CParserError s "[satisfy] Empty input"
+satisfy :: (HasCallStack) => Text -> (Char -> Bool) -> Parser result Char
+satisfy name predicate = CParserT p
+ where
+  p s@(i, c : rest) k ke =
+    if predicate c
+      then k (c, (i + 1, rest))
+      else ke (CParserError s ("[satisfy] Failed to parse " <> name))
+  p s@(_, []) _ ke = ke $ CParserError s "[satisfy] Empty input"
 
-char :: HasCallStack => Char -> Parser result Char
+char :: (HasCallStack) => Char -> Parser result Char
 char c = satisfy (T.pack [c]) (== c)
 
-string :: HasCallStack => String -> Parser result String
+string :: (HasCallStack) => String -> Parser result String
 string = traverse char
 
 main :: IO ()
@@ -125,4 +136,8 @@ main = do
   let p3 = (<>) <$> string "hello" <*> string "world"
   test p3 (0, "helloworld abc")
   test p3 (0, "abc")
+
+  let p4 = string "hello" <> string "world"
+  test p4 (0, "helloworld abc")
+  test p4 (0, "abc")
   return ()

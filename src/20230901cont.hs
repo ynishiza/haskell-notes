@@ -4,6 +4,7 @@
 --  stack ghci -- src/scratch/<name>.hs
 {-# LANGUAGE GADTs #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901cont where
 
 import Control.Monad

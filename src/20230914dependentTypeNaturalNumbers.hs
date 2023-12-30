@@ -22,6 +22,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Werror=incomplete-patterns #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230914dependentTypeNaturalNumbers where
 
 import Control.Monad

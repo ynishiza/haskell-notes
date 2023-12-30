@@ -8,6 +8,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901servantHandlerExample where
 
 import Control.Monad.Catch hiding (Handler)

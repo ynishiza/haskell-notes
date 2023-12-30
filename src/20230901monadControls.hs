@@ -6,6 +6,7 @@
 -}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901monadControls where
 
 import Control.Monad.Reader

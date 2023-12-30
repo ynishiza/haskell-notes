@@ -7,6 +7,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE OverloadedStrings #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230928aesonJSONPath where
 
 import Data.Aeson

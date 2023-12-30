@@ -28,6 +28,7 @@
   Source: https://www.well-typed.com/blog/2015/12/dependently-typed-servers/
 -}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20231029dependentlyTypedServer where
 
 import Control.Concurrent

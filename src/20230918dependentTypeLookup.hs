@@ -16,6 +16,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE StandaloneKindSignatures #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230918dependentTypeLookup where
 
 import Data.List.Singletons (SList (..))

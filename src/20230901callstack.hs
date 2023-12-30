@@ -9,6 +9,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE RankNTypes #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901callstack where
 
 import Control.Exception

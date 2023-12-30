@@ -19,6 +19,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230911howDependentHaskellCanImproveIndustry where
 
 import Data.Foldable

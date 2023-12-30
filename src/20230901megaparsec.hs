@@ -8,6 +8,7 @@
 {-# OPTIONS_GHC -Wno-unused-top-binds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901megaparsec where
 
 import Control.Applicative

@@ -7,6 +7,7 @@
 {-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wincomplete-patterns #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901patternMatch where
 
 main :: IO ()

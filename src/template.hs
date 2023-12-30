@@ -6,6 +6,7 @@
 -}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
+-- Note: define a module to generate Haddock documentation per note
 module NoteTemplate where
 
 main :: IO ()

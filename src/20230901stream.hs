@@ -1,5 +1,6 @@
 #!/usr/bin/env stack
 
+-- Note: define a module to generate Haddock documentation per note
 module Note20230901stream where
 
 import Data.Function
