@@ -18,6 +18,24 @@ jobs:
       - name: Clean
         run: make clean
 
+      # Reference: https://github.com/actions/cache/blob/main/examples.md#haskell---stack
+      - uses: actions/cache@v3
+        name: Cache ~/.stack
+        with:
+          path: ~/.stack
+          # key: ${{ runner.os }}-stack-global-${{ hashFiles('stack.yaml') }}-${{ hashFiles('package.yaml') }}
+          key: ${{ runner.os }}-stack-global-haskell-notes
+          restore-keys: |
+            ${{ runner.os }}-stack-global-
+      - uses: actions/cache@v3
+        name: Cache .stack-work
+        with:
+          path: .stack-work
+          # key: ${{ runner.os }}-stack-work-${{ hashFiles('stack.yaml') }}-${{ hashFiles('package.yaml') }}-${{ hashFiles('**/*.hs') }}
+          key: ${{ runner.os }}-stack-work-haskell-notes
+          restore-keys: |
+            ${{ runner.os }}-stack-work-
+
       - name: Compile
         run: make debug && make compile
 
