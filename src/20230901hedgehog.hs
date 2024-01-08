@@ -1,6 +1,7 @@
 #!/usr/bin/env stack
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
+
 {-
   Run with
     stack exec -- src/scratch/<name>.hs
@@ -52,11 +53,11 @@ prop_c = property $ do
 testCoverage :: Gen Int -> Property
 testCoverage gen = property $ forAll gen >>= checkCoverage
 
-checkCoverage :: MonadTest m => Int -> m ()
+checkCoverage :: (MonadTest m) => Int -> m ()
 checkCoverage x = traverse_ coverIn $ enumFromThenTo 0 step 90
-  where
-    step = 10
-    coverIn lb = let ub = lb + step in classify ("[" <> fromString (show lb) <> "," <> fromString (show ub) <> "]") $ x > lb && x <= ub
+ where
+  step = 10
+  coverIn lb = let ub = lb + step in classify ("[" <> fromString (show lb) <> "," <> fromString (show ub) <> "]") $ x > lb && x <= ub
 
 prop_testcoverage :: Property
 prop_testcoverage = property $ do
@@ -81,7 +82,31 @@ prop_test_tripping =
     readMaybe (show x) === pure x
     tripping x show readMaybe
 
-sampleMany :: Show a => Gen a -> IO ()
+data Value a = Value a | ValueGroup [Value a] deriving (Show, Eq)
+
+singleValue :: Gen (Value Int)
+singleValue = Value <$> int (linear 0 1000)
+anyValue :: Gen (Value Int)
+anyValue =
+  recursive
+    ((ValueGroup <$>) . subsequence <=< sequence)
+    (replicate 10 singleValue)
+    [anyValue]
+
+prop_recursive :: Property
+prop_recursive = property $ do
+  let
+    groupValue (ValueGroup v) = v
+    groupValue _ = []
+    groupDepth :: Value a -> Int
+    groupDepth x = case x of
+      Value _ -> 0
+      ValueGroup v -> sum (groupDepth <$> v) + 1
+  x <- forAll anyValue
+  label (fromString $ "number of values in top level:" <> show (length $ groupValue x))
+  label (fromString $ "max group depth:" <> show (groupDepth x))
+
+sampleMany :: (Show a) => Gen a -> IO ()
 sampleMany gen = seeds >>= traverse_ (\s -> printWith 99 s gen)
-  where
-    seeds = replicateM 100 random
+ where
+  seeds = replicateM 100 random
