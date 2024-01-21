@@ -9,89 +9,21 @@
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
 -- Note: define a module to generate Haddock documentation per note
-module Scratch where
+module NoteTemplate where
 
 import Control.Monad.Free
 import Control.Monad.Trans.Writer
 
 main :: IO ()
 main = do
-  iterM interpretIO c
-  putStrLn $ execWriter $ iterM prettyPrint c
-
   iterM interpretIO $ applyTestAction (Type . show <$> [1 :: Int, 10 ..]) c
   return ()
 
--- data StateEffect s a where
---  Get :: (s -> a) -> StateEffect s a
---  Put :: s -> a -> StateEffect s a
---  deriving stock (Functor)
-
--- data WriteEffect w a where
---  Tell :: w -> a -> WriteEffect w a
---  deriving stock (Functor)
-
--- data Effect s w a where
---  EfState :: StateEffect s a -> Effect s w a
---  EfWrite :: WriteEffect w a -> Effect s w a
---  deriving stock (Functor)
-
--- type EffectF s w = Free (Effect s w)
-
--- getF :: EffectF s w s
--- getF = liftF $ EfState $ Get id
-
--- putF :: s -> EffectF s w ()
--- putF s = liftF $ EfState $ Put s ()
-
--- tellF :: w -> EffectF s w ()
--- tellF w = liftF $ EfWrite $ Tell w ()
-
--- program :: EffectF Int String ()
--- program = do
---  x <- getF
---  putF x
---  tellF $ show x
---  return ()
-
----- data ReadEffect a where
-----   ReadInt :: (Int -> a) -> ReadEffect a
-----   ReadString :: (String -> a) -> ReadEffect a
-----   deriving stock Functor
-
----- data WriteEffect a where
-----   WriteInt :: Int -> a -> WriteEffect a
-----   WriteString :: String -> a -> WriteEffect a
-----   deriving stock Functor
-
----- data Effect a where
-----   EffRead :: ReadEffect a -> Effect a
-----   EffWrite :: WriteEffect a -> Effect a
-----   A :: Effect Int -> (Int -> String) -> (String -> a) -> Effect a
-----   deriving stock Functor
-
----- type EffF = Free Effect
-
----- readIntF :: EffF Int
----- readIntF = liftF $ EffRead $ ReadInt id
-
----- readStringF :: EffF String
----- readStringF = liftF $ EffRead $ ReadString id
-
----- writeIntF :: Int -> EffF ()
----- writeIntF x = liftF $ EffWrite $ WriteInt x ()
-
----- writeStringF :: String -> EffF ()
----- writeStringF x = liftF $ EffWrite $ WriteString x ()
-
----- program :: EffF ()
----- program = do
-----   n <- readIntF
-----   writeIntF n
-----   s <- readStringF
-----   writeStringF s
-----   return ()
-----
+-- Note: don't call in main since it reads from stdin
+testIO :: IO ()
+testIO = do
+  iterM interpretIO c
+  putStrLn $ execWriter $ iterM prettyPrint c
 
 -- step: define simulator
 data Effect a where

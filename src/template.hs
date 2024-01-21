@@ -1,4 +1,6 @@
 #!/usr/bin/env stack
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GADTs #-}
 {-
   Run with
     stack exec -- src/scratch/<name>.hs
@@ -10,4 +12,6 @@
 module NoteTemplate where
 
 main :: IO ()
-main = putStrLn "Hello"
+main = do
+  -- Stuff
+  return ()
