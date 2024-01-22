@@ -1,6 +1,7 @@
 #!/usr/bin/env stack
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE RankNTypes #-}
 {-
   Run with
     stack exec -- src/scratch/<name>.hs
@@ -11,7 +12,9 @@
 -- Note: define a module to generate Haddock documentation per note
 module NoteTemplate where
 
-import Control.Monad.Free
+-- import Control.Monad.Free
+
+import Control.Monad.Free.Church
 import Control.Monad.Trans.Writer
 
 main :: IO ()
@@ -33,7 +36,7 @@ data Effect a where
   deriving (Functor)
 
 -- step: wrap in Free
-type EffectF = Free Effect
+type EffectF = F Effect
 putStrLnF :: String -> EffectF ()
 putStrLnF s = liftF $ PutStrLn s ()
 
@@ -56,19 +59,22 @@ interpretIO (PutStrLn s a) = putStrLn s >> a
 
 -- e.g. interpret Free action as String
 foldToString :: forall a. EffectF a -> String
-foldToString (Pure _) = ""
-foldToString (Free (PutStrLn s a)) = s <> ":" <> foldToString a
-foldToString (Free (GetLine next)) = "GetLine 100:" <> foldToString (next "100")
+foldToString (F fld) = fld (const "") go
+ where
+  -- go (Pure _) = ""
+  go ((PutStrLn s a)) = s <> ":" <> a -- <> foldToString a
+  go ((GetLine next)) = "GetLine 100:" <> next "100" -- <> foldToString (next "100")
 
 prettyPrint :: Effect (Writer String a) -> Writer String a
 prettyPrint (PutStrLn s a) = tell ("PutStrln " <> s <> "\n") >> a
-prettyPrint (GetLine next) = tell "GetLine\n" >> next ""
+prettyPrint (GetLine next) = tell "GetLine\n" >> next "100"
 
 data TestAction where
   Type :: String -> TestAction
 
 applyTestAction :: [TestAction] -> EffectF a -> EffectF a
-applyTestAction [] e = e
-applyTestAction _ (Pure a) = Pure a
-applyTestAction ((Type s) : ts) (Free (GetLine k)) = applyTestAction ts (k s)
-applyTestAction ts (Free v) = Free $ applyTestAction ts <$> v
+applyTestAction ts (F fld) = fld (const . pure) go ts
+ where
+  go :: Effect ([TestAction] -> EffectF a) -> [TestAction] -> EffectF a
+  go (GetLine k) (Type s : ts') = k s ts'
+  go s ts' = wrap $ ($ ts') <$> s
