@@ -87,6 +87,7 @@ dependencies:
 - timeit >= 2.0 && < 3
 
 # Streaming
+- conduit > 1.3
 - streaming > 0.2 && <0.3
 - streaming-utils > 0.2 && < 0.3
 - streaming-bytestring > 0.2 && < 0.3
