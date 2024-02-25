@@ -35,7 +35,8 @@ main = do
 
 data MyExceptionA = forall e. (Exception e) => MyExceptionA e
 
-instance Show MyExceptionA where show (MyExceptionA e) = "MyExceptionA " <> show e
+instance Show MyExceptionA where 
+  show (MyExceptionA e) = "MyExceptionA " <> show e
 
 -- | SomeException (MyExceptionA e)
 instance Exception MyExceptionA

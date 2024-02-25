@@ -7,7 +7,7 @@ DOCUMENTATION_DIR=docs
 SCRIPT_DOCUMENTATION_DIR=srcdocs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=43
+SRCFILESCOUNT=50
 
 HADDOCK=stack exec -- haddock
 HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST
@@ -67,7 +67,7 @@ test: ## Run tests
 test-scripts: ## Test scripts
 	set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
-	for file in "$${FILES[@]}"; do stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
+	for file in "$${FILES[@]}"; do echo "Test: $$file"; stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
 
 .PHONY: lint
 lint: ## Lint
