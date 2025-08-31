@@ -7,7 +7,7 @@ DOCUMENTATION_DIR=docs
 SCRIPT_DOCUMENTATION_DIR=srcdocs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=50
+SRCFILESCOUNT=54
 
 HADDOCK=stack exec -- haddock
 HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST
@@ -39,17 +39,17 @@ compile-profile: ## Compile with profiler
 
 .PHONY: compile-scripts
 compile-scripts: ## Compile each script
-	set -euo pipefail ; \
+	@set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
 	FILECOUNT="$${#FILES[@]}" ;\
 	[[ "$$FILECOUNT" != $(SRCFILESCOUNT) ]] && echo "Expected $(SRCFILESCOUNT) but found $$FILECOUNT. Check 'make debug'" && exit 1; \
-	for file in "$${FILES[@]}"; do stack ghc -- $$file; done
+	for file in "$${FILES[@]}"; do echo "Compiling $$file" ; stack ghc -- $$file; done
 
 .PHONY: document-scripts
 document-scripts: ## Compile script documentation
-	set -euo pipefail ; \
+	@set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
-	for file in "$${FILES[@]}"; do make document-script SCRIPT=$$file; done
+	for file in "$${FILES[@]}"; do echo "Compiling $$file"; make document-script SCRIPT=$$file; done
 	# for file in "$${FILES[@]}"; do stack exec -- haddock -o srcdocs/$$(basename -s .hs $$file) --html --hyperlinked-source $$file; done
 
 .PHONY: document-script-target

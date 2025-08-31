@@ -10,10 +10,10 @@ jobs:
       - run: set
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: haskell/actions/setup@v2
+      - uses: haskell-actions/setup@v2
         with:
-          ghc-version: '9.4.7'
-          cabal-version: '3.8' # Exact version of Cabal
+          ghc-version: '9.6.7'
+          cabal-version: '3.12.1.0' # Exact version of Cabal
 
       - name: Clean
         run: make clean

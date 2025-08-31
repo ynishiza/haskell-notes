@@ -31,6 +31,7 @@ import Control.Concurrent.STM
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Reader (MonadReader (..))
+import Data.Binary.Builder
 import Data.ByteString.Char8 qualified as B
 import Data.Foldable
 import Data.Function
@@ -132,7 +133,7 @@ instance (HasServer api ctx, KnownSymbol path) => HasServer (MyPath path :> api)
 -}
 instance (KnownSymbol path, HasClient m api) => HasClient m (MyPath path :> api) where
   type Client m (MyPath path :> api) = Client m api
-  clientWithRoute _ _ req = clientWithRoute (Proxy @m) (Proxy @api) $ appendToPath (T.pack $ symbolVal (Proxy @path)) req
+  clientWithRoute _ _ req = clientWithRoute (Proxy @m) (Proxy @api) $ appendToPath (putStringUtf8 $ symbolVal (Proxy @path)) req
   hoistClientMonad _ _ = hoistClientMonad (Proxy @m) (Proxy @api)
 
 -- ============================== Capture ==============================
@@ -178,7 +179,7 @@ instance (HasServer api ctx, FromHttpApiData a, KnownSymbol name, Typeable a) =>
 -}
 instance (ToHttpApiData a, HasClient m api) => HasClient m (MyCapture name a :> api) where
   type Client m (MyCapture name a :> api) = a -> Client m api
-  clientWithRoute _ _ req value = clientWithRoute (Proxy @m) (Proxy @api) $ appendToPath (toUrlPiece value) req
+  clientWithRoute _ _ req value = clientWithRoute (Proxy @m) (Proxy @api) $ appendToPath (putStringUtf8 $ T.unpack $ toUrlPiece value) req
   hoistClientMonad _ _ f = (hoistClientMonad (Proxy @m) (Proxy @api) f <$>)
 
 -- ============================== Query param ==============================
@@ -234,8 +235,8 @@ parseQueryParamFromRequest name req = do
 instance (ToHttpApiData a, HasClient m api, KnownSymbol name) => HasClient m (MyQueryParam name a :> api) where
   type Client m (MyQueryParam name a :> api) = a -> Client m api
   clientWithRoute _ _ req value =
-    clientWithRoute (Proxy @m) (Proxy @api)
-      $ appendToQueryString (T.pack $ symbolVal (Proxy @name)) (Just bytes) req
+    clientWithRoute (Proxy @m) (Proxy @api) $
+      appendToQueryString (T.pack $ symbolVal (Proxy @name)) (Just bytes) req
    where
     bytes = encodeUtf8 $ toQueryParam value
   hoistClientMonad _ _ f = (hoistClientMonad (Proxy @m) (Proxy @api) f <$>)
@@ -327,7 +328,11 @@ instance HasServer MyEmpty ctx where
     StaticRouter
       M.empty
       [ \env req k ->
-          runAction delayedRouter env req k 
+          runAction
+            delayedRouter
+            env
+            req
+            k
             (\_ -> Fail $ err500{errReasonPhrase = "EMPTY SERVER"})
       ]
   hoistServerWithContext _ _ f = f

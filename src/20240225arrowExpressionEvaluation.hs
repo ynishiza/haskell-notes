@@ -17,8 +17,9 @@
 {- | Module
 
 Ref: https://www.haskell.org/arrows/biblio.html
+Paper: "Generalizing Monads to Arrows"
 
-Arrow lambda-calculus example in "Generalizing Monads to Arrows" Section 4.2
+Section 4.2 "Arrows and interpreters"
 -}
 module NoteExpressionEvaluationWithArrows (
   main,

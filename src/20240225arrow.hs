@@ -1,4 +1,5 @@
 #!/usr/bin/env stack
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE InstanceSigs #-}
 {-# LANGUAGE TupleSections #-}
@@ -12,14 +13,14 @@
 
 {- | Module
 
-Note: define a module to generate Haddock documentation per note
+Monad vs Arrow
 -}
 module NoteArrow where
 
 import Control.Arrow hiding (Kleisli (..))
 import Control.Category
 import Control.Monad
-import Prelude hiding ((.))
+import Prelude hiding (id, (.))
 import Prelude qualified
 
 -- * main
@@ -34,7 +35,7 @@ dot = (Prelude..)
 
 main :: IO ()
 main = do
-  return  ()
+  return ()
 
 test :: IO ()
 test = do
@@ -52,6 +53,12 @@ instance (Arrow a) => Applicative (MyArrow a b) where
   (<*>) :: MyArrow a b (c -> d) -> MyArrow a b c -> MyArrow a b d
   MyArrow j <*> MyArrow k = MyArrow $ arr (\(x, f) -> f x) . (k &&& j)
 
+{- | Arrow is a generalization of a monad
+An arrow with ArrowApply is a monad.
+-}
+instance (ArrowApply (MyArrow a), Arrow a) => Monad (MyArrow a b) where
+  x >>= k = ((x >>> arr k) &&& id) >>> app
+
 -- * Kleisli
 
 --
@@ -64,6 +71,7 @@ instance (Monad m) => Category (Kleisli m) where
   id = Kleisli return
   Kleisli l . Kleisli k = Kleisli $ k >=> l
 
+-- | Every monad (Kleisli) is an arrow
 instance (Monad m) => Arrow (Kleisli m) where
   arr f = Kleisli $ dot return f
   first (Kleisli k) = Kleisli $ \(x, y) -> (,y) <$> k x

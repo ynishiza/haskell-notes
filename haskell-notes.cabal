@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -54,6 +54,7 @@ library
     , async >=2.2 && <3
     , attoparsec >0.10 && <0.20
     , base >=4.14 && <5
+    , binary >0.8 && <0.9
     , blaze-html >0.9 && <1
     , bytestring >=0.10 && <0.12
     , conduit >1.3
@@ -65,11 +66,11 @@ library
     , exceptions ==0.10.*
     , extra >=1.5 && <1.8
     , filepath >=1.4.1 && <1.5
-    , fin >0.2 && <0.3
+    , fin >0.2 && <0.4
     , fourmolu >=0.8 && <1
     , free >5.1 && <6
     , ghc-prim >=0.6.0
-    , hedgehog >=0.5 && <1.2
+    , hedgehog >=0.5 && <2.0
     , hlint >=3.4 && <4
     , hspec >=0.1 && <=3
     , http-client >0.7
@@ -79,11 +80,11 @@ library
     , lens-aeson >1 && <2
     , monad-control ==1.*
     , monad-logger >=0.3.37 && <0.4
-    , mtl >=2.0 && <2.3
+    , mtl >=2.0 && <3.0
     , optparse-applicative >=0.17 && <0.20
     , random
     , regex-tdfa >=1 && <2.0
-    , resourcet >1.2.0 && <1.3.0
+    , resourcet >1.2.0 && <=1.3.0
     , safe-exceptions >0.1.6 && <0.2
     , scientific ==0.3.*
     , servant >0.19 && <0.30
@@ -96,16 +97,16 @@ library
     , singletons-th >3 && <4
     , stm >2.5 && <3
     , streaming >0.2 && <0.3
-    , streaming-bytestring >0.2 && <0.3
+    , streaming-bytestring >0.2 && <0.4
     , streaming-utils >0.2 && <0.3
-    , tasty-hedgehog >=0.1 && <=1.4
+    , tasty-hedgehog >=0.1 && <=1.5
     , tasty-hspec >=1.1 && <1.3
     , template-haskell >=2.18 && <3
     , text >=1.2 && <3
     , text-show >=3.0 && <4
     , time >=1.8 && <2
     , timeit >=2.0 && <3
-    , transformers ==0.5.*
+    , transformers ==0.6.*
     , transformers-base >=0.4 && <1
     , unix-compat >=0.5 && <1
     , vector >=0.1 && <1
@@ -146,6 +147,7 @@ executable app
     , async >=2.2 && <3
     , attoparsec >0.10 && <0.20
     , base >=4.14 && <5
+    , binary >0.8 && <0.9
     , blaze-html >0.9 && <1
     , bytestring >=0.10 && <0.12
     , conduit >1.3
@@ -157,12 +159,12 @@ executable app
     , exceptions ==0.10.*
     , extra >=1.5 && <1.8
     , filepath >=1.4.1 && <1.5
-    , fin >0.2 && <0.3
+    , fin >0.2 && <0.4
     , fourmolu >=0.8 && <1
     , free >5.1 && <6
     , ghc-prim >=0.6.0
     , haskell-notes
-    , hedgehog >=0.5 && <1.2
+    , hedgehog >=0.5 && <2.0
     , hlint >=3.4 && <4
     , hspec >=0.1 && <=3
     , http-client >0.7
@@ -173,11 +175,11 @@ executable app
     , megaparsec ==9.*
     , monad-control ==1.*
     , monad-logger >=0.3.37 && <0.4
-    , mtl >=2.0 && <2.3
+    , mtl >=2.0 && <3.0
     , optparse-applicative >=0.17 && <0.20
     , random
     , regex-tdfa >=1 && <2.0
-    , resourcet >1.2.0 && <1.3.0
+    , resourcet >1.2.0 && <=1.3.0
     , safe-exceptions >0.1.6 && <0.2
     , scientific ==0.3.*
     , servant >0.19 && <0.30
@@ -190,16 +192,16 @@ executable app
     , singletons-th >3 && <4
     , stm >2.5 && <3
     , streaming >0.2 && <0.3
-    , streaming-bytestring >0.2 && <0.3
+    , streaming-bytestring >0.2 && <0.4
     , streaming-utils >0.2 && <0.3
-    , tasty-hedgehog >=0.1 && <=1.4
+    , tasty-hedgehog >=0.1 && <=1.5
     , tasty-hspec >=1.1 && <1.3
     , template-haskell >=2.18 && <3
     , text >=1.2 && <3
     , text-show >=3.0 && <4
     , time >=1.8 && <2
     , timeit >=2.0 && <3
-    , transformers ==0.5.*
+    , transformers ==0.6.*
     , transformers-base >=0.4 && <1
     , unix-compat >=0.5 && <1
     , vector >=0.1 && <1
