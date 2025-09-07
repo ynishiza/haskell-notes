@@ -3,17 +3,10 @@
 # For more information, please see the documentation at:
 #   https://docs.haskellstack.org/en/stable/topics/lock_files
 
-packages:
-- completed:
-    hackage: streaming-utils-0.2.3.0@sha256:932c804c55c261e0d98fe0288fa11936ba972af9ff1f3758e8b2de5852b1a321,4093
-    pantry-tree:
-      sha256: 7406b6e5669a479898bf0509dd604345ae5e8aa6cb25016004043d0563ae8afd
-      size: 623
-  original:
-    hackage: streaming-utils-0.2.3.0@sha256:932c804c55c261e0d98fe0288fa11936ba972af9ff1f3758e8b2de5852b1a321,4093
+packages: []
 snapshots:
 - completed:
-    sha256: 238fa745b64f91184f9aa518fe04bdde6552533d169b0da5256670df83a0f1a9
-    size: 721141
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/22/44.yaml
-  original: lts-22.44
+    sha256: d347039f81388e16ea93ddaf9ff1850abfba8f8680ff75fbdd177692542ceb26
+    size: 726286
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/24/8.yaml
+  original: lts-24.8

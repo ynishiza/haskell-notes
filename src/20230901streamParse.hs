@@ -10,7 +10,7 @@
 module Note20230901streamParse where
 
 import Data.Attoparsec.ByteString.Char8
-import Data.Attoparsec.ByteString.Streaming as BS
+-- import Data.Attoparsec.ByteString.Streaming as BS
 import Data.ByteString qualified as B
 import Data.Functor.Of
 import Streaming.ByteString
@@ -23,7 +23,8 @@ stream = fromStrict "aaaaabbb"
 
 main :: IO ()
 main = do
-  (Left res, restStream) <- BS.parse (many' a) stream
-  (rest :> _) <- toStrict restStream
-  putStrLn $ "result:" <> res
-  B.putStr $ "rest:" <> rest <> "\n"
+  return ()
+  -- (Left res, restStream) <- BS.parse (many' a) stream
+  -- (rest :> _) <- toStrict restStream
+  -- putStrLn $ "result:" <> res
+  -- B.putStr $ "rest:" <> rest <> "\n"

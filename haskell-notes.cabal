@@ -67,7 +67,6 @@ library
     , extra >=1.5 && <1.8
     , filepath >=1.4.1 && <1.5
     , fin >0.2 && <0.4
-    , fourmolu >=0.8 && <1
     , free >5.1 && <6
     , ghc-prim >=0.6.0
     , hedgehog >=0.5 && <2.0
@@ -98,7 +97,6 @@ library
     , stm >2.5 && <3
     , streaming >0.2 && <0.3
     , streaming-bytestring >0.2 && <0.4
-    , streaming-utils >0.2 && <0.3
     , tasty-hedgehog >=0.1 && <=1.5
     , tasty-hspec >=1.1 && <1.3
     , template-haskell >=2.18 && <3
@@ -160,7 +158,6 @@ executable app
     , extra >=1.5 && <1.8
     , filepath >=1.4.1 && <1.5
     , fin >0.2 && <0.4
-    , fourmolu >=0.8 && <1
     , free >5.1 && <6
     , ghc-prim >=0.6.0
     , haskell-notes
@@ -193,7 +190,6 @@ executable app
     , stm >2.5 && <3
     , streaming >0.2 && <0.3
     , streaming-bytestring >0.2 && <0.4
-    , streaming-utils >0.2 && <0.3
     , tasty-hedgehog >=0.1 && <=1.5
     , tasty-hspec >=1.1 && <1.3
     , template-haskell >=2.18 && <3

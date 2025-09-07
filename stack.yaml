@@ -1,10 +1,12 @@
 # GHC 9.6.7
-resolver: lts-22.44
+resolver: lts-24.8
+
+compiler: ghc-9.10.1
 
 allow-newer: true
 
 packages:
 - .
 
-extra-deps: 
-- streaming-utils-0.2.3.0@sha256:932c804c55c261e0d98fe0288fa11936ba972af9ff1f3758e8b2de5852b1a321,4093
+# extra-deps: 
+# - fourmolu-0.10.1.0@sha256:fc75b80653cdbd450a4baf51fc8eff4b7b46fd87ad8819cc95a8749cd03aef5e,7455

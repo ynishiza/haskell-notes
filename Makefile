@@ -7,7 +7,7 @@ DOCUMENTATION_DIR=docs
 SCRIPT_DOCUMENTATION_DIR=srcdocs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=54
+SRCFILESCOUNT=55
 
 HADDOCK=stack exec -- haddock
 HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST
@@ -16,7 +16,7 @@ HADDOCK_SRC=src/HaddockTest/*.hs
 default: help
 
 .PHONY: install
-install: ## Install 
+install: ## Install
 	make compile
 
 .PHONY: uninstall
@@ -28,14 +28,14 @@ uninstall: ## Uninstall
 compile: ## Compile
 	# IMPORTANT: need to build dynamic too
 	# for library to be linked with scripts
-	# e.g. using lib/Utils.hs 
+	# e.g. using lib/Utils.hs
 	stack build --ghc-options -dynamic-too
 	make compile-scripts
 	make document-scripts
 
 .PHONY: compile-profile
 compile-profile: ## Compile with profiler
-	stack build --profile 
+	stack build --profile
 
 .PHONY: compile-scripts
 compile-scripts: ## Compile each script
@@ -43,14 +43,13 @@ compile-scripts: ## Compile each script
 	FILES=($(SRCFILES)) ;\
 	FILECOUNT="$${#FILES[@]}" ;\
 	[[ "$$FILECOUNT" != $(SRCFILESCOUNT) ]] && echo "Expected $(SRCFILESCOUNT) but found $$FILECOUNT. Check 'make debug'" && exit 1; \
-	for file in "$${FILES[@]}"; do echo "Compiling $$file" ; stack ghc -- $$file; done
+	for i in "$${!FILES[@]}"; do file=$${FILES[$$i]}; echo "$$i Compiling $$file" ; stack ghc -- $$file; done
 
 .PHONY: document-scripts
 document-scripts: ## Compile script documentation
 	@set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
-	for file in "$${FILES[@]}"; do echo "Compiling $$file"; make document-script SCRIPT=$$file; done
-	# for file in "$${FILES[@]}"; do stack exec -- haddock -o srcdocs/$$(basename -s .hs $$file) --html --hyperlinked-source $$file; done
+	for i in "$${!FILES[@]}"; do file=$${FILES[$$i]} ;echo "$$i Compiling $$file"; make document-script SCRIPT=$$file; done
 
 .PHONY: document-script-target
 document-script: ## Run haddock on a specific script
@@ -67,7 +66,7 @@ test: ## Run tests
 test-scripts: ## Test scripts
 	set -euo pipefail ; \
 	FILES=($(SRCFILES)) ;\
-	for file in "$${FILES[@]}"; do echo "Test: $$file"; stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
+	for i in "$${!FILES[@]}"; do file=$${FILES[$$i]}; echo "$$i Test: $$file"; stack exec -- $$file; [[ $$? != "0" ]] && exit 10; done; exit 0;
 
 .PHONY: lint
 lint: ## Lint
