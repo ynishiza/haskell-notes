@@ -36,7 +36,8 @@ main = do
   putStrLn $ dosomething Int 1
   putStrLn $ dosomething Bool True
   putStrLn $ dosomething String "a"
-  putStrLn $ id2 "a"
+  putStrLn $ show $ id2 "a"
+  putStrLn $ show $ just "a"
   return ()
 
 -- Extension: RequiredTypeArguments
@@ -44,5 +45,14 @@ dosomething :: forall x -> (Show x) => x -> String
 dosomething _ x = show x
 
 -- Extension: TypeAbstractions
-id2 :: a -> a
-id2 @t v = v :: t
+id2 :: a -> (a, Maybe a)
+id2 @t v = (v :: t, Just @t v)
+
+just :: a -> Maybe a
+just @t v = Just @t v
+
+test :: Int -> Bool
+test x
+  | x == 0 = True
+  | x == 1 = False
+  | otherwise = False

@@ -7,7 +7,7 @@ DOCUMENTATION_DIR=docs
 SCRIPT_DOCUMENTATION_DIR=srcdocs
 
 SRCFILES=$(call get_source_in_directory,src)
-SRCFILESCOUNT=55
+SRCFILESCOUNT=56
 
 HADDOCK=stack exec -- haddock
 HADDOCK_OPTIONS=--prologue src/HaddockTest/Intro --hyperlinked-source --title TEST
