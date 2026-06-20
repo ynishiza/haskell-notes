@@ -49,7 +49,8 @@ library
       ImportQualifiedPost
   ghc-options: -rtsopts=all -fprof-auto -fprof-auto-top -fprof-auto-calls -fprof-auto-exported -fprof-auto-calls -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -Werror
   build-depends:
-      aeson ==2.*
+      ChasingBottoms
+    , aeson ==2.*
     , aeson-pretty >=0.8 && <1
     , async >=2.2 && <3
     , attoparsec >0.10 && <0.20
@@ -140,7 +141,8 @@ executable app
       ImportQualifiedPost
   ghc-options: -rtsopts=all -fprof-auto -fprof-auto-top -fprof-auto-calls -fprof-auto-exported -fprof-auto-calls -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -Werror
   build-depends:
-      aeson ==2.*
+      ChasingBottoms
+    , aeson ==2.*
     , aeson-pretty >=0.8 && <1
     , async >=2.2 && <3
     , attoparsec >0.10 && <0.20

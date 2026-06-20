@@ -86,6 +86,7 @@ dependencies:
 - random
 - criterion >= 1.5.12 && < 2
 - timeit >= 2.0 && < 3
+- ChasingBottoms
 
 # Streaming
 - conduit > 1.3
