@@ -1,4 +1,5 @@
 #!/usr/bin/env stack
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GADTs #-}
 {-
@@ -8,13 +9,15 @@
 -}
 {-# OPTIONS_GHC -Wno-missing-export-lists #-}
 
--- | Module
---
--- Testing fixed points
---
--- https://hackage.haskell.org/package/base/docs/Control-Monad-Fix.html#t:MonadFix
+{- | Module
+
+Testing fixed points
+
+https://hackage.haskell.org/package/base/docs/Control-Monad-Fix.html#t:MonadFix
+-}
 module Strict (
   -- * main
+
   --
   main,
 ) where
@@ -44,6 +47,21 @@ repeat12 = fix (\v -> (1 : 2 : v))
 factorial :: Int -> Int
 factorial = fix $ \f -> (\n -> if n <= 1 then 1 else n * f (n - 1))
 
+sum_ :: Int -> Int
+sum_ x = foldl (+) x [1, 2, 3]
+
+sum_' :: Int -> Int
+sum_' x = foldl' (+) x [1, 2, 3]
+
+double :: Int -> Int  -- not strict?
+double x = x + x
+
+double' :: Int -> Int -- strict in argument?
+double' !x = x + x
+
+double'' :: Int -> Int -- strict in argument + result?
+double'' !x = let !y = x + x in y
+
 main :: IO ()
 main = do
   print $ take 10 $ repeat0
@@ -57,7 +75,7 @@ main = do
 
   -- [(1,1),(2,2)]
   --
-  -- since 
+  -- since
   --
   --   (snd x, y) = x   =>   (y, y)
   --
